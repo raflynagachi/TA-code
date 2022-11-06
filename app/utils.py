@@ -1,5 +1,7 @@
 import pandas as pd
 import streamlit as st
+import numpy as np
+from PIL import Image
 
 
 def head():
@@ -18,9 +20,18 @@ def head():
                )
 
     st.write(
-        "Abstrak disini here"
+        "Abstrak disini"
     )
 
 
 def body():
     st.markdown('---')
+    upload_photo()
+
+
+def upload_photo():
+    uploaded_file = st.file_uploader("Pilih gambar")
+    if uploaded_file is not None:
+        image = Image.open(uploaded_file)
+        imageArr = np.array(image)
+        st.image(image, caption='Uploaded image')
