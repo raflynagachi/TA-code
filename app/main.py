@@ -1,5 +1,11 @@
-import streamlit as st
-from utils import head, body
+from model import Data
+from views import head, body
 
-head()
-body()
+
+def main():
+    data = Data()
+    head()
+    body(data)
+
+
+main()
