@@ -16,6 +16,7 @@ def upload_photo(col, data):
     uploaded_file = col.file_uploader("Pilih gambar")
     if uploaded_file is not None:
         image = Image.open(uploaded_file)
-        imageArr = np.array(image)
-        data.setImageArr(imageArr)
+        data.setImage(image)
+        # imageArr = np.array(image)
+        # data.setImageArr(imageArr)
         showImage(col, image)

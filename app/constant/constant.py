@@ -1,0 +1,1 @@
+NUM_CHANNEL = 3
