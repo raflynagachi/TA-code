@@ -38,24 +38,25 @@ class LZ77Compressor:
                 # of the match
                 (bestMatchDistance, bestMatchLength) = match
 
-                output_buffer.append(True)
-                output_buffer.frombytes(bytes([bestMatchDistance >> 4]))
-                output_buffer.frombytes(
-                    bytes([((bestMatchDistance & 0xf) << 4) | bestMatchLength]))
+                # output_buffer.append(True)
+                # output_buffer.frombytes(bytes([bestMatchDistance >> 4]))
+                # output_buffer.frombytes(
+                #     bytes([((bestMatchDistance & 0xf) << 4) | bestMatchLength]))
 
+                symbol = "(1, %i, %i)".format((bestMatchDistance, bestMatchLength))
                 if verbose:
-                    print("(1, %i, %i)" %
-                          (bestMatchDistance, bestMatchLength), end='')
+                    print(symbol, end='')
 
                 i += bestMatchLength
 
             else:
                 # No useful match was found. Add 0 bit flag, followed by 8 bit for the character
-                output_buffer.append(False)
-                output_buffer.frombytes(bytes([data[i]]))
+                # output_buffer.append(False)
+                # output_buffer.frombytes(bytes([data[i]]))
 
+                symbol = "(0, %s)".format(data[i])
                 if verbose:
-                    print("(0, %s)" % data[i], end='')
+                    print(symbol, end='')
 
                 i += 1
 
@@ -68,13 +69,12 @@ class LZ77Compressor:
     def decompress(self, data):
         """
         Given a string of the compressed data, the data is decompressed back to its
-        original form, and written into the output file path if provided.
-        the decompressed data is returned as a string
+        original form the decompressed data is returned as a string
         """
-        data = bitarray(endian='big')
         output_buffer = []
 
         while len(data) >= 9:
+            print("data: ", len(data))
 
             flag = data.pop(0)
 
@@ -135,13 +135,23 @@ class LZ77Compressor:
 
 
 if __name__ == "__main__":
-    text = b"gambar ini adalah gambar gambar gambar gambar gambar gambar ini adalah gambar gambar gambar gambar gambar"
+    text = b"""Given a string of the compressed data, the data is decompressed back to its
+        original form, and written into the output file path if provided.
+        the decompressed data is returned as a string. Given a string of the compressed data, the data is decompressed back to its
+        original form, and written into the output file path if provided.
+        the decompressed data is returned as a string"""
 
-    compressor = LZ77Compressor(window_size=200)  # window_size is optional
+    compressor = LZ77Compressor(window_size=100)  # window_size is optional
     # or assign compressed data into a variable
     compressed_data = compressor.compress(text, True)
     print("\n")
     print("text: ", text, end="\n")
     print("compressed: ", compressed_data, end="\n")
-    print("size: ", getsizeof(text))
+    print("size: ", getsizeof("""Given a string of the compressed data, the data is decompressed back to its
+        original form, and written into the output file path if provided.
+        the decompressed data is returned as a string. Given a string of the compressed data, the data is decompressed back to its
+        original form, and written into the output file path if provided.
+        the decompressed data is returned as a string"""))
     print("size: ", getsizeof(compressed_data))
+    decoded = compressor.decompress(compressed_data)
+    print("decoded: ", decoded)
