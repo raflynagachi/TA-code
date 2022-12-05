@@ -1,6 +1,5 @@
 from sys import getsizeof
-from bitarray import bitarray
-from helper import strToBinary
+import re
 
 
 class LZ77Compressor:
@@ -18,84 +17,70 @@ class LZ77Compressor:
         Given text to compressed by applying a simple LZ77 compression algorithm.
 
         The compressed format is:
-        0 bit followed by 8 bits (1 byte character) when there are no previous matches
-                within window
-        1 bit followed by 12 bits pointer (distance to the start of the match from the
-                current position) and 4 bits (length of the match)
+        pair of symbol (x, y, z) which mean x is flag, y is distance, z is symbol.
 
-        Returned as a bitarray
+        Returned as a string of symbols
 
         if verbose is enabled, the compression description is printed to standard output
         """
         i = 0
-        output_buffer = bitarray(endian='big')
+        out_data = []
 
         while i < len(data):
             match = self.findLongestMatch(data, i)
+            symbol = ""
 
             if match:
-                # Add 1 bit flag, followed by 12 bit for distance, and 4 bit for the length
-                # of the match
+                # Add 1 bit flag
                 (bestMatchDistance, bestMatchLength) = match
 
-                # output_buffer.append(True)
-                # output_buffer.frombytes(bytes([bestMatchDistance >> 4]))
-                # output_buffer.frombytes(
-                #     bytes([((bestMatchDistance & 0xf) << 4) | bestMatchLength]))
-
-                symbol = "(1, %i, %i)".format((bestMatchDistance, bestMatchLength))
+                symbol = "(1,{},{})".format(
+                    bestMatchDistance, bestMatchLength)
                 if verbose:
                     print(symbol, end='')
 
                 i += bestMatchLength
 
             else:
-                # No useful match was found. Add 0 bit flag, followed by 8 bit for the character
-                # output_buffer.append(False)
-                # output_buffer.frombytes(bytes([data[i]]))
-
-                symbol = "(0, %s)".format(data[i])
+                # No useful match was found. Add 0 bit flag
+                symbol = "(0,{})".format(data[i])
                 if verbose:
                     print(symbol, end='')
 
                 i += 1
-
-        # fill the buffer with zeros if the number of bits is not a multiple of 8
-        output_buffer.fill()
+            out_data.append(symbol)
 
         # return the compressed data
-        return output_buffer
+        # return out_data
+        return "".join(out_data)
 
     def decompress(self, data):
         """
         Given a string of the compressed data, the data is decompressed back to its
         original form the decompressed data is returned as a string
         """
-        output_buffer = []
+        out_data = []
+        pattern = "(\([^)]+\))"  # look for data inside parenthesis
+        symbols = re.findall(pattern, data)
+        print(symbols)
 
-        while len(data) >= 9:
-            print("data: ", len(data))
-
-            flag = data.pop(0)
+        for symbol in symbols:
+            ext = symbol[1:-1].split(",")
+            flag = False if ext[0] == "0" else True
 
             if not flag:
-                byte = data[0:8].tobytes()
-
-                output_buffer.append(byte)
-                del data[0:8]
+                character = ext[1]
+                out_data.append(character)
             else:
-                byte1 = ord(data[0:8].tobytes())
-                byte2 = ord(data[8:16].tobytes())
-
-                del data[0:16]
-                distance = (byte1 << 4) | (byte2 >> 4)
-                length = (byte2 & 0xf)
+                distance = int(ext[1])
+                length = int(ext[2])
 
                 for _ in range(length):
-                    output_buffer.append(output_buffer[-distance])
-        out_data = b''.join(output_buffer)
+                    out_data.append(out_data[-distance])
 
-        return out_data
+        # return the decompressed data
+        # return out_data
+        return "".join(out_data)
 
     def findLongestMatch(self, data, current_position):
         """
@@ -108,10 +93,7 @@ class LZ77Compressor:
         best_match_distance = -1
         best_match_length = -1
 
-        # Optimization: Only consider substrings of length 2 and greater, and just
-        # output any substring of length 1 (8 bits uncompressed is better than 13 bits
-        # for the flag, distance, and length)
-        for i in range(current_position + 2, end_of_buffer):
+        for i in range(current_position + 1, end_of_buffer):
 
             start_index = max(0, current_position - self.window_size)
             substring = data[current_position:i]
@@ -135,23 +117,22 @@ class LZ77Compressor:
 
 
 if __name__ == "__main__":
-    text = b"""Given a string of the compressed data, the data is decompressed back to its
-        original form, and written into the output file path if provided.
-        the decompressed data is returned as a string. Given a string of the compressed data, the data is decompressed back to its
-        original form, and written into the output file path if provided.
-        the decompressed data is returned as a string"""
+    text = """
+    Given a string of the compressed data, the data is decompressed back to its
+    original form, and written into the output file path if provided.
+    the decompressed data is returned as a string. Given a string of the compressed data, the data is decompressed back to its
+    original form, and written into the output file path if provided.
+    the decompressed data is returned as a string"""
 
     compressor = LZ77Compressor(window_size=100)  # window_size is optional
     # or assign compressed data into a variable
-    compressed_data = compressor.compress(text, True)
+    compressed_data = compressor.compress(text, False)
+
     print("\n")
     print("text: ", text, end="\n")
     print("compressed: ", compressed_data, end="\n")
-    print("size: ", getsizeof("""Given a string of the compressed data, the data is decompressed back to its
-        original form, and written into the output file path if provided.
-        the decompressed data is returned as a string. Given a string of the compressed data, the data is decompressed back to its
-        original form, and written into the output file path if provided.
-        the decompressed data is returned as a string"""))
+    print("size: ", getsizeof(text))
     print("size: ", getsizeof(compressed_data))
+
     decoded = compressor.decompress(compressed_data)
     print("decoded: ", decoded)
