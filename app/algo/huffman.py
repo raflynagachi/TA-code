@@ -1,5 +1,6 @@
 from nodeClass import Node
 from treeClass import Tree
+from bitarray import bitarray
 from sys import getsizeof
 
 """
@@ -124,8 +125,9 @@ def huffmanDecoding(data, tree):
 
 
 if __name__ == "__main__":
-    text = "gambar ini adalah gambar gambar gambar gambar gambar gambar ini adalah gambar gambar gambar gambar gambar gambar ini adalah gambar gambar gambar gambar gambar gambar ini adalah gambar gambar gambar gambar gambar"
+    text = "mantap jiwa bosque asik banget kata gua mah mantap jiwa bosque asik banget kata gua mah mantap jiwa bosque asik banget kata gua mah mantap jiwa bosque asik banget kata gua mah mantap jiwa bosque asik banget kata gua mah mantap jiwa bosque asik banget kata gua mah"
     tree, encoded_data = huffmanEncoding(text)
-    print("text: ", encoded_data)
+    print(tree)
+    print("text: ", bitarray(encoded_data))
     print("size: ", getsizeof(text))
-    print("size: ", getsizeof(encoded_data))
+    print("size: ", getsizeof(bitarray(encoded_data)))

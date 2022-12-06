@@ -10,7 +10,7 @@ class LZ77Compressor:
 
     def __init__(self, window_size=20):
         self.window_size = min(window_size, self.MAX_WINDOW_SIZE)
-        self.lookahead_buffer_size = 15  # length of match is at most 4 bits
+        self.lookahead_buffer_size = 15
 
     def compress(self, data, verbose=False):
         """
