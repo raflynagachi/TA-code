@@ -1,5 +1,7 @@
 import numpy as np
 from PIL import Image
+import cv2
+from app.algo.zigzag import zigzag as zg
 
 
 class DCT:
@@ -19,6 +21,7 @@ class DCT:
     def __init__(self, cover_image):
         self.quant_table = self.QUANTIZATION_TABLE
         self.height, self.width = cover_image.shape[:2]
+        self.image = cover_image
         self.channel = [
             self.split_image_to_block(cover_image[:, :, 0], self.BLOCK_SIZE),
             self.split_image_to_block(cover_image[:, :, 1], self.BLOCK_SIZE),
@@ -32,8 +35,21 @@ class DCT:
                 blocks.append(horz_slice)
         return blocks
 
-    def encode(message):
-        pass
+    def encode(self, message):
+        stego_image = np.empty_like(image)
+        for idx, ch in enumerate(self.channel):
+            # forward dct stage
+            dct_blocks = [cv2.dct(block) for block in ch]
+
+            # quantization stage
+            dct_quants = [np.around(np.divide(item, self.quant_table))
+                          for item in dct_blocks]
+
+            # sort dct coefficient by frequency
+            sorted_coef = [zg.zigzag(block) for block in dct_quants]
+
+            if idx == 0:
+                secret_data = ""
 
     def decode(image):
         pass
