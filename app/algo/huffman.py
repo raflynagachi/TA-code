@@ -1,7 +1,7 @@
 from nodeClass import Node
 from treeClass import Tree
-from bitarray import bitarray
 from sys import getsizeof
+from bitarray import bitarray
 
 """
 Pseudocode:
@@ -108,8 +108,8 @@ def huffmanDecoding(data, tree):
         return ''
     dict = get_codes(tree.root)
     reversed_dict = {}
-    for value, key in dict.items():
-        reversed_dict[key] = value
+    for key, value in dict.items():
+        reversed_dict[value] = key
     start_index = 0
     end_index = 1
     max_index = len(data)
@@ -125,9 +125,12 @@ def huffmanDecoding(data, tree):
 
 
 if __name__ == "__main__":
-    text = "mantap jiwa bosque asik banget kata gua mah mantap jiwa bosque asik banget kata gua mah mantap jiwa bosque asik banget kata gua mah mantap jiwa bosque asik banget kata gua mah mantap jiwa bosque asik banget kata gua mah mantap jiwa bosque asik banget kata gua mah"
-    tree, encoded_data = huffmanEncoding(text)
-    print(tree)
-    print("text: ", bitarray(encoded_data))
-    print("size: ", getsizeof(text))
+    textRaw = "example apple example apple example apple example apple example apple example apple"
+    text = "(0,e)(0,x)(0,a)(0,m)(0,p)(0,l)(1,6,1)(0, )(1,6,1)(1,5,1)(1,6,4)(1,14,14)(1,28,14)(1,42,14)(1,56,14)(1,70,13)"
+    tree, encoded_data = huffmanEncoding(textRaw)
+    decoded = huffmanDecoding(encoded_data, tree)
+    # print(tree)
+    print("ENCODED: ", bitarray(encoded_data))
     print("size: ", getsizeof(bitarray(encoded_data)))
+    print("sizeTree: ", getsizeof(tree))
+    print("sizeRaw: ", getsizeof(textRaw))

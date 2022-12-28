@@ -117,12 +117,7 @@ class LZ77Compressor:
 
 
 if __name__ == "__main__":
-    text = """
-    Given a string of the compressed data, the data is decompressed back to its
-    original form, and written into the output file path if provided.
-    the decompressed data is returned as a string. Given a string of the compressed data, the data is decompressed back to its
-    original form, and written into the output file path if provided.
-    the decompressed data is returned as a string"""
+    text = """example apple example apple example apple example apple example apple example apple"""
 
     compressor = LZ77Compressor(window_size=100)  # window_size is optional
     # or assign compressed data into a variable
