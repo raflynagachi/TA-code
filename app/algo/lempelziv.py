@@ -3,9 +3,6 @@ import re
 
 
 class LZ77Compressor:
-    """
-    A simplified implementation of the LZ77 Compression Algorithm
-    """
     MAX_WINDOW_SIZE = 400
 
     def __init__(self, window_size=20):
@@ -50,8 +47,6 @@ class LZ77Compressor:
                 i += 1
             out_data.append(symbol)
 
-        # return the compressed data
-        # return out_data
         return "".join(out_data)
 
     def decompress(self, data):
@@ -78,8 +73,6 @@ class LZ77Compressor:
                 for _ in range(length):
                     out_data.append(out_data[-distance])
 
-        # return the decompressed data
-        # return out_data
         return "".join(out_data)
 
     def findLongestMatch(self, data, current_position):

@@ -20,3 +20,6 @@ def upload_photo(col, data):
         # imageArr = np.array(image)
         # data.setImageArr(imageArr)
         showImage(col, image)
+
+def run_stegano(col, data, message):
+  
