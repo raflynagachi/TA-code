@@ -5,8 +5,10 @@ import zigzag as zg
 import zlib
 import struct
 import cv2
+from bitarray import bitarray
 from sys import getsizeof, byteorder
 from difflib import SequenceMatcher
+import helper
 
 """
 Pseudocode:
@@ -39,6 +41,7 @@ class DCT:
     def __init__(self, cover_image):
         self.quant_table = np.float64(self.QUANTIZATION_TABLE)
         self.image = cover_image
+        self.height, self.width = cover_image.shape[:2]
         self.channel = [
             self.split_image_to_block(cover_image[:, :, 0], self.BLOCK_SIZE),
             self.split_image_to_block(cover_image[:, :, 1], self.BLOCK_SIZE),
@@ -51,6 +54,29 @@ class DCT:
             for horz_slice in np.hsplit(vert_slice, int(image.shape[1] / block_size)):
                 blocks.append(horz_slice)
         return blocks
+
+    def stitch_8x8_blocks_back_together(self, block_segments):
+        image_rows = []
+        temp = []
+        for i in range(len(block_segments)):
+            if i > 0 and not(i % int(self.width / 8)):
+                image_rows.append(temp)
+                temp = [block_segments[i]]
+            else:
+                temp.append(block_segments[i])
+        image_rows.append(temp)
+
+        return np.block(image_rows)
+
+    def array_to_image(self, channel):
+        stego_image = np.empty_like(self.image)
+        stego_image[:, :, 0] = np.asarray(
+            self.stitch_8x8_blocks_back_together(channel[0]))
+        stego_image[:, :, 1] = np.asarray(
+            self.stitch_8x8_blocks_back_together(channel[1]))
+        stego_image[:, :, 2] = np.asarray(
+            self.stitch_8x8_blocks_back_together(channel[2]))
+        return stego_image
 
     def dct(self, block, verbose=False):
         dctMat = []
@@ -96,21 +122,6 @@ class DCT:
                     print(block[x][y] * val, end=" + ")
         return dctMat
 
-    def float_to_binary(self, num):
-        return ''.join('{:0>8b}'.format(c) for c in struct.pack('!f', num))
-
-    def binary_to_float(self, binary):
-        binary = int(binary, 2)
-        return struct.unpack('f', struct.pack('I',  binary))[0]
-
-    def int_to_binary(self, num, is_32Bit=False):
-        if is_32Bit:
-            return '{:032b}'.format(num)
-        return bin(num)
-
-    def binary_to_int(self, binary):
-        return int(binary, 2)
-
     def embed_message(self, block, encoded_data):
         start_idx, end_idx = 12, 32
         i = 0
@@ -119,10 +130,10 @@ class DCT:
             if len(encoded_data) == 0:
                 break
 
-            embed = self.int_to_binary(item)
+            embed = helper.int_to_binary(item)
             embed = embed[:-1] + encoded_data[0]
             # print(encoded_data[0], "\t", embed, end="\n")
-            block[start_idx + i] = self.binary_to_int(embed)
+            block[start_idx + i] = helper.binary_to_int(embed)
 
             encoded_data = encoded_data[1:]
             i += 1
@@ -135,12 +146,12 @@ class DCT:
         for item in block[start_idx: end_idx]:
             if max_char != 0 and max_char == len(message):
                 break
-            embed = self.int_to_binary(item)
+            embed = helper.int_to_binary(item)
             message += embed[-1]
 
             if i == 31 and max_char == 0:
                 print("message 31: ", message)
-                max_char = self.binary_to_int(message)
+                max_char = helper.binary_to_int(message)
                 message = ""
 
             i += 1
@@ -150,14 +161,17 @@ class DCT:
         if message == None:
             return
 
-        message = self.int_to_binary(len(message), True) + message
+        # index for Y (luminance) layer
+        idx_channel = 0
+        message = helper.int_to_binary(len(message), True) + message
 
-        # modify only for Y (luminance) layer
-        stego_image = [np.subtract(block, 128) for block in self.channel[0]]
+        # modify only for specific layer
+        dct_blocks = [np.subtract(block, 128)
+                      for block in self.channel[idx_channel]]
 
         # forward dct stage
         dct_blocks = [cv2.dct(block)
-                      for block in stego_image]
+                      for block in dct_blocks]
 
         # quantize
         dct_blocks = [np.round(block/self.quant_table) for block in dct_blocks]
@@ -183,12 +197,19 @@ class DCT:
                                   for block in embedded_block]).astype(int)
         embedded_block = [np.add(block, 128) for block in embedded_block]
 
-        stego_image = [embedded_block, self.channel[1], self.channel[2]]
-        print("PSNR: ", PSNR(np.float64(
-            self.channel), np.float64(stego_image)))
+        stego_channel = [embedded_block, self.channel[1], self.channel[2]]
+        for i in range(3):
+            if idx_channel == i:
+                stego_channel.append(embedded_block)
+                continue
+            stego_channel.append(self.channel[i])
+        stego_image = self.array_to_image(stego_channel)
+
+        print("PSNR: ", PSNR(np.float64(self.array_to_image(
+            self.channel)), np.float64(stego_image)))
         # print("DCT: ", dct_blocks[0])
-        print(self.channel[0][1])
-        print(embedded_block[1])
+        # print(self.channel[0][1])
+        # print(embedded_block[1])
         return stego_image
 
     def decode(self, imageArr):
@@ -241,19 +262,6 @@ def prep_image(img):
     return padded_img
 
 
-def bitstring_to_bytes(s):
-    v = int(s, 2)
-    b = bytearray()
-    while v:
-        b.append(v & 0xff)
-        v >>= 8
-    return bytes(b[::-1])
-
-
-def BytesToBitArray(B):
-    return bin(int.from_bytes(B, byteorder))[2:]
-
-
 def PSNR(original, stego):
     mse = np.mean((original - stego) ** 2)
     if(mse == 0):
@@ -268,39 +276,42 @@ def similar(a, b):
 
 
 if __name__ == "__main__":
-    image = Image.open("example/Lenna.png")
+    image = Image.open("example/peppers.png")
     cover_image = prep_image(image)
+    print("COVER: ", cover_image.shape)
 
     # # test compression using zlib
-    comp = zlib.compress(
-        b"""
-        This code uses the PIL library to open an image, convert it to a numpy array, and then perform the 2D Discrete Cosine Transform (DCT) on the image using the numpy.dct() function.
-It then converts the data to embed to bytes and gets the size of the data.
-This code uses the PIL library to open an image, convert it to a numpy array, and then perform the 2D Discrete Cosine Transform (DCT) on the image using the numpy.dct() function.
-It then converts the data to embed to bytes and gets the size of the data.
-This code uses the PIL library to open an image, convert it to a numpy array, and then perform the 2D Discrete Cosine Transform (DCT) on the image using the numpy.dct() function.
-It then converts the data to embed to bytes and gets the size of the data.
-This code uses the PIL library to open an image, convert it to a numpy array, and then perform the 2D Discrete Cosine Transform (DCT) on the image using the numpy.dct() function.
-It then converts the data to embed to bytes and gets the size of the data.
-dasdasdasoijdoasd sdasdisajdiasdsa das d asd asdw dw eqr r qer qe retroed f df df dsf sdfonwojfwjfoew
-dsjosajfod dsf sdf ds fidsfi d0fiqe0iqe0fi q0fi q0f iq0 f0eqif 0qif 0ids0f isd0 fi
-        """)
-    # print("Ori: ", type("mantap"))
-    # print("Ori: ", comp)
-    # print("Comp: ", BytesToBitArray(comp))
+    with open('example/text.txt') as f:
+        lines = f.readlines()
+    originalMessage = str.encode(''.join(lines))
+    comp = zlib.compress(originalMessage)
+    print("Ori: ", getsizeof(originalMessage))
+    print("Comp: ", getsizeof(comp))
+    # print("Comp: ", helper.bytes_to_binary(comp))
 
     # test DCT
     dctObj = DCT(cover_image)
-    stego = dctObj.encode(BytesToBitArray(comp))
-    message = dctObj.decode(stego)
-    print("message final: ", message)
-    print("similarity: ", similar(BytesToBitArray(comp), message))
-    msg = int(message, 2).to_bytes(len(message) // 8, byteorder)
-    print(zlib.decompress(msg))
+    stego = dctObj.encode(helper.bytes_to_binary(comp))
+    img = Image.fromarray(np.uint8(stego), "RGB")
+    img.save("stego_image.png", "PNG")
+    print("PSNR real: ", PSNR(cover_image, stego))
 
-    # print("float: ", BytesToBitArray(struct.pack('>f', 19)))
-    # print("float: ", BytesToBitArray(struct.pack('>f', 19.90)))
-    # print("float: ", BytesToBitArray(struct.pack('>f', -19.90)))
+    ######################
+    # stego2 = Image.open("stego_image.png")
+    # message = dctObj.decode(stego)
+    # print("message final: ", message)
+    # print("similarity: ", similar(helper.bytes_to_binary(comp), message))
+
+    # msg = int(message, 2).to_bytes(len(message) // 8, byteorder)
+
+    # print("similarity bytes: ", similar(comp, msg))
+    # print("size: ", getsizeof(originalMessage))
+    # print(zlib.decompress(msg))
+    ######################
+
+    # print("float: ", helper.bytes_to_binary(struct.pack('>f', 19)))
+    # print("float: ", helper.bytes_to_binary(struct.pack('>f', 19.90)))
+    # print("float: ", helper.bytes_to_binary(struct.pack('>f', -19.90)))
 
     # print("\nPSNR: ", PSNR(imageArr, np.round(cv2.idct(np.float32(quantized)))))
     # print("PSNR: ", PSNR(imageArr, np.round(cv2.idct(np.float32(dequantized)))))
