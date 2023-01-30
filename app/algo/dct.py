@@ -1,5 +1,4 @@
 import numpy as np
-from PIL import Image
 import math
 import zigzag as zg
 import zlib
@@ -12,7 +11,7 @@ import helper
 
 """
 Pseudocode:
-1. konversi nilai piksel RGB menjadi YCbCr
+1. konversi nilai piksel BGR menjadi YCbCr
 2. Citra digital dipecah menjadi blok 8x8
 3. Matriks orisinil dikurangi 128
 4. Perhitungan DCT
@@ -38,18 +37,19 @@ class DCT:
                           [49,  64,  78,  87, 103, 121, 120, 101],
                           [72,  92,  95,  98, 112, 100, 103,  99]]
 
-    def __init__(self, cover_image=None):
+    def __init__(self, decode=False, cover_image=None):
         self.quant_table = np.float64(self.QUANTIZATION_TABLE)
-        if cover_image != None:
+        if not decode:
             self.ori_img, self.image = prep_image(cover_image)
             self.height, self.width = self.image.shape[:2]
-            self.ori_width, self.ori_height = cover_image.size
+            self.ori_width, self.ori_height = cover_image.shape[:2]
             self.channel = [
-                self.split_image_to_block(
-                    self.image[:, :, 0], self.BLOCK_SIZE),
-                self.split_image_to_block(
-                    self.image[:, :, 1], self.BLOCK_SIZE),
-                self.split_image_to_block(self.image[:, :, 2], self.BLOCK_SIZE)
+                np.float64(self.split_image_to_block(
+                    self.image[:, :, 0], self.BLOCK_SIZE)),
+                np.float64(self.split_image_to_block(
+                    self.image[:, :, 1], self.BLOCK_SIZE)),
+                np.float64(self.split_image_to_block(
+                    self.image[:, :, 2], self.BLOCK_SIZE))
             ]
 
     def split_image_to_block(self, image, block_size):
@@ -154,6 +154,7 @@ class DCT:
         for item in block[start_idx: end_idx]:
             if max_char != 0 and max_char == len(message):
                 break
+
             embed = helper.int_to_binary(item)
             message += embed[-1]
 
@@ -167,26 +168,31 @@ class DCT:
 
     def post_image(self, stego):
         # retrieve cropped pixel
-        image = np.uint8(self.ori_img)
+        image = self.ori_img
         image[:stego.shape[0], :stego.shape[1]] = stego
-        img = Image.fromarray(image, mode="YCbCr").convert("RGB")
-        img.save("stego_image.png", "PNG")
-        print("stego ori2 RGB: ", np.array(img)[0][0])
+        # image = cv2.cvtColor(image, cv2.COLOR_YCR_CB2BGR)
+        img = np.uint8(np.clip(image, 0, 255))
+        cv2.imwrite("stego_image.png", img)
+        print("stego ori2 BGR: ", np.array(img)[0][0])
 
     def encode(self, message):
         if message == None:
             return
 
         # index for Y (luminance) layer
-        idx_channel = 1
+        idx_channel = 0
         message = helper.int_to_binary(len(message), True) + message
+        # TODO
+        # len message is 1493 but got 29846 in binary form
+        # print("MAX char len msg: ", helper.binary_to_int(
+        #     '0b'+helper.int_to_binary(len(message), True)))
 
         # modify only for specific layer
         dct_blocks = [np.subtract(block, 128)
                       for block in self.channel[idx_channel]]
 
         # forward dct stage
-        dct_blocks = [cv2.dct(block)
+        dct_blocks = [cv2.dct(block.astype(float))
                       for block in dct_blocks]
 
         # quantize
@@ -226,12 +232,12 @@ class DCT:
         #       helper.float_to_binary(stego_image[idx0][idx1][idx2]))
         # print("INT: ", np.uint8(stego_image)[
         #       idx0][idx1][idx2], helper.int_to_binary(np.uint8(stego_image)[idx0][idx1][idx2]))
-        # print("INT: ", np.float64(np.uint8(stego_image))[
+        # print("INT: ", np.float32(np.uint8(stego_image))[
         #       idx0][idx1][idx2], helper.int_to_binary(np.uint8(stego_image)[idx0][idx1][idx2]))
 
         # saving image
         print("stego uint8: ", np.uint8(stego_image)[0][0])
-        self.post_image(np.uint8(stego_image))
+        self.post_image(stego_image)
 
         return stego_image
 
@@ -241,7 +247,7 @@ class DCT:
         max_char = 0
 
         # modify only for Y (luminance) layer
-        idx_channel = 1
+        idx_channel = 0
         imageArr = self.split_image_to_block(
             np.float64(imageArr)[:, :, idx_channel], self.BLOCK_SIZE)
         stego_image = [np.subtract(block, 128)
@@ -269,10 +275,10 @@ class DCT:
 
 
 def prep_image(img):
-    cover_image = img.convert('YCbCr')
-    print("prep RGB: ", np.array(img)[0][0])
+    cover_image = np.float32(img)
+    print("prep BGR: ", np.array(img)[0][0])
     print("prep YCbCr: ", np.array(cover_image)[0][0])
-    height, width = cover_image.size
+    width, height = cover_image.shape[:2]
 
     # Padding pixel of image
     # # Calculate the number of pixels to pad in the width and height
@@ -297,7 +303,7 @@ def prep_image(img):
     print("final size of cropped w h: ", width_crp, height_crp)
 
     # Create a black pixel with the required padding
-    ori_img = np.array(cover_image, dtype=np.float64)
+    ori_img = cover_image
     cropped_img = ori_img[
         :width_crp, :height_crp]
 
@@ -330,29 +336,36 @@ if __name__ == "__main__":
     ###########TEXT END#############
 
     ###########ENCODING#############
-    image = Image.open("example/flowers.jpg")
-    dctObj = DCT(image)
+    image = cv2.imread("example/Lenna.png", flags=cv2.IMREAD_COLOR)
+    dctObj = DCT(cover_image=image)
     stego = dctObj.encode(helper.bytes_to_binary(comp))
     # print("size cover: ", image.size)
     # print("PSNR real: ", PSNR(dctObj.image, stego))
     ##########ENCODING END###########
 
     ###########DECODING###########
-    stego2 = Image.open("stego_image.png")
+    stego2 = cv2.imread("stego_image.png", flags=cv2.IMREAD_COLOR)
     stego2, stego2_cropped = prep_image(stego2)
     print("stego: ", stego[0][0])
     print("stego2: ", stego2[0][0])
     print("stego cropped: ", stego2_cropped[0][0])
-    dctObj = DCT()
-    message = dctObj.decode(stego2_cropped)
+    dctObj = DCT(decode=True)
+    message = dctObj.decode(stego)
+    message2 = dctObj.decode(stego2_cropped)
     # print("message final: ", message)
     print("similarity: ", similar(helper.bytes_to_binary(comp), message))
+    print("similarity2: ", similar(helper.bytes_to_binary(comp), message2))
 
-    msg = int(message, 2).to_bytes(len(message) // 8, byteorder)
+    msg = int(helper.bytes_to_binary(comp)[:40], 2).to_bytes(
+        len(helper.bytes_to_binary(comp)[:40]) // 8, byteorder="big")
+    # msg = bytes(int(message[i: i + 8], 2) for i in range(0, len(message), 8))
+    print("MESSAGE: ", msg)
 
-    print("similarity bytes: ", similar(comp, msg))
-    print("size: ", getsizeof(originalMessage))
-    print(zlib.decompress(msg))
+    # print("similarity bytes: ", similar(comp, msg))
+    print(msg[:10])
+    print(comp[:10])
+    # print("size: ", getsizeof(originalMessage))
+    # print(zlib.decompress(msg))
     ###########DECODING END###########
 
     # print("float: ", helper.bytes_to_binary(struct.pack('>f', 19)))
