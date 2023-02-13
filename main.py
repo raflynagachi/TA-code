@@ -1,17 +1,21 @@
-# from app.model.data import Data
-# from app.view.template import head, body
-# from app.algo.dct import encoding
-from app.algo.huffman import huffmanEncoding
+from app.algo.dct import *
+import streamlit as st
 
+st.set_page_config(
+  page_title="Main",
+  page_icon="👋",
+)
 
-def main():
-    # data = Data()
-    # head()
-    # body(data)
-    text = "gambar ini adalah gambar gambar gambar gambar gambar gambar ini adalah gambar gambar gambar gambar gambar"
-    tree, encoded_data = huffmanEncoding(text)
-    print("size: ", getsizeof(text))
-    print("size: ", getsizeof(encoded_data))
+st.markdown("""
+        <h1 style='text-align: center; margin-bottom: -35px;'>
+        Discrete Cosine Transform (DCT) Algorithm and Deflate Compression Algorithm in Digital Image Steganography
+        </h1>
+    """, unsafe_allow_html=True
+                )
 
-
-main()
+st.caption("""
+    <p style='text-align: center; margin-top: 8px;'>
+    by Rafly Rigan Nagachi
+    </p>
+""", unsafe_allow_html=True
+            )
