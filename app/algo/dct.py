@@ -135,7 +135,7 @@ class DCT:
             if len(encoded_data) == 0:
                 break
 
-            embed = helper.int_to_binary(item * 2, True)
+            embed = helper.int_to_binary(item, True)
             embed = embed[:-1] + encoded_data[0]
             embed = helper.binary_to_int(embed)
             block[start_idx + i] = embed
@@ -152,7 +152,7 @@ class DCT:
             if max_char != 0 and max_char == len(message):
                 break
 
-            embed = helper.int_to_binary(item // 2, True)
+            embed = helper.int_to_binary(item, True)
             message += embed[-1]
 
             if i == 31 and max_char == 0:
@@ -179,7 +179,7 @@ class DCT:
 
         # index for embedded
         idx_channel = 0
-        message = helper.hamming_encode(message, self.HAMMING)
+        # message = helper.hamming_encode(message, self.HAMMING)
         message = helper.int_to_binary(len(message), True) + message
 
         # modify only for specific layer
@@ -208,6 +208,9 @@ class DCT:
 
             # unpack zigzag
             dct_blocks[idx] = zg.inverse_zigzag(sorted_coef, 8, 8)
+
+        if len(message) != 0:
+            raise Exception("not enough block")
 
         embedded_block = [block * self.quant_table for block in dct_blocks]
         embedded_block = np.rint([cv2.idct(block.astype(float))
@@ -258,7 +261,8 @@ class DCT:
             message, max_char = self.extract_message(
                 sorted_coef, message, max_char)
         print("max char: ", max_char)
-        return helper.hamming_decode(message, self.HAMMING)
+        # return helper.hamming_decode(message, self.HAMMING)
+        return message
 
 
 def prep_image(img, conv=False):
@@ -284,7 +288,7 @@ def prep_image(img, conv=False):
 
 def PSNR(original, stego):
     mse = np.mean((original - stego) ** 2)
-    if(mse == 0):
+    if (mse == 0):
         return 100
     max_pixel = 255.0
     psnr = 20 * math.log10(max_pixel / math.sqrt(mse))
@@ -296,7 +300,7 @@ def similar(a, b):
 
 
 if __name__ == "__main__":
-    ###########TEXT#############
+    ########### TEXT#############
     # test compression using zlib
     with open('example/text.txt') as f:
         lines = f.readlines()
@@ -305,35 +309,39 @@ if __name__ == "__main__":
     print("Ori: ", getsizeof(originalMessage))
     print("Comp: ", getsizeof(comp))
     # print("Comp: ", helper.bytes_to_binary(comp))
-    ###########TEXT END#############
+    ########### TEXT END#############
 
-    ###########ENCODING#############
-    image = cv2.imread("example/background.png", flags=cv2.IMREAD_COLOR)
-    dctObj = DCT(cover_image=image)
-    stego = dctObj.encode(helper.bytes_to_binary(comp))
+    ########### ENCODING#############
+    # image = cv2.imread("example/Lenna.png", flags=cv2.IMREAD_COLOR)
+    # dctObj = DCT(cover_image=image)
+    # try:
+    #     stego = dctObj.encode(helper.bytes_to_binary(comp))
+    # except Exception as err:
+    #     print("Unexpected error: ", err)
+    #     stego = None
     # print("size cover: ", image.size)
     # print("PSNR real: ", PSNR(dctObj.image, stego))
-    ##########ENCODING END###########
+    ########## ENCODING END###########
 
-    ###########DECODING###########
+    ########### DECODING###########
     stego2 = cv2.imread("stego_image.png", flags=cv2.IMREAD_COLOR)
     stego2, stego2_cropped = prep_image(stego2)
-    print("stego: ", stego[0][0])
+    # print("stego: ", stego[0][0])
     print("stego2: ", stego2[0][0])
     print("stego cropped: ", stego2_cropped[0][0])
     dctObj = DCT(decode=True)
-    message = dctObj.decode(prep_image(stego)[1])
+    # message = dctObj.decode(prep_image(stego)[1])
     message2 = dctObj.decode(stego2_cropped)
     # print("message final: ", message)
-    print('PSNR: ', PSNR(image, stego2))
-    print("similarity: ", similar(helper.bytes_to_binary(comp), message))
+    # print('PSNR: ', PSNR(image, stego2))
+    # print("similarity: ", similar(helper.bytes_to_binary(comp), message))
     print("similarity2: ", similar(helper.bytes_to_binary(comp), message2))
 
     msg = helper.binary_to_bytes(message2)
 
     print("similarity bytes: ", similar(comp, msg))
     print(zlib.decompress(msg).decode("UTF-8")[:100])
-    ###########DECODING END###########
+    ########### DECODING END###########
 
     # print("float: ", helper.bytes_to_binary(struct.pack('>f', 19)))
     # print("float: ", helper.bytes_to_binary(struct.pack('>f', 19.90)))
