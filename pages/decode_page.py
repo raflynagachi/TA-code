@@ -1,5 +1,5 @@
 import streamlit as st
-from app.view.utils import *
+from app.view.utils_decode import *
 from app.algo.dct import *
 
 st.set_page_config(page_title="Decode Message", page_icon="🔓")
@@ -15,3 +15,6 @@ Button:
 
 dct = DCT(decode=True)
 st.markdown('---')
+col1, col2, col3 = st.columns([1, 1, 3])
+upload_photo(col3, dct)
+run_extract_message(col1, col2, dct)

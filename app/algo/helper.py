@@ -46,7 +46,7 @@ def stitch_8x8_blocks_back_together(size, block_segments):
     image_rows = []
     temp = []
     for i in range(len(block_segments)):
-        if i > 0 and not(i % int(size / 8)):
+        if i > 0 and not (i % int(size / 8)):
             image_rows.append(temp)
             temp = [block_segments[i]]
         else:
@@ -66,6 +66,19 @@ def array_to_image(image, channel):
     stego_image[:, :, 2] = np.asarray(
         stitch_8x8_blocks_back_together(width, channel[2]))
     return stego_image
+
+
+def PSNR(original, stego):
+    mse = np.mean((original - stego) ** 2)
+    if (mse == 0):
+        return 100
+    max_pixel = 255.0
+    psnr = 20 * math.log10(max_pixel / math.sqrt(mse))
+    return psnr
+
+
+def similar(a, b):
+    return SequenceMatcher(None, a, b).ratio()
 
 
 def __hamming_common(src: List[List[int]], s_num: int, encode=True) -> None:

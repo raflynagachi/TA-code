@@ -286,19 +286,6 @@ def prep_image(img, conv=False):
     return ori_img, cropped_img
 
 
-def PSNR(original, stego):
-    mse = np.mean((original - stego) ** 2)
-    if (mse == 0):
-        return 100
-    max_pixel = 255.0
-    psnr = 20 * math.log10(max_pixel / math.sqrt(mse))
-    return psnr
-
-
-def similar(a, b):
-    return SequenceMatcher(None, a, b).ratio()
-
-
 if __name__ == "__main__":
     ########### TEXT#############
     # test compression using zlib
@@ -312,15 +299,15 @@ if __name__ == "__main__":
     ########### TEXT END#############
 
     ########### ENCODING#############
-    # image = cv2.imread("example/Lenna.png", flags=cv2.IMREAD_COLOR)
-    # dctObj = DCT(cover_image=image)
-    # try:
-    #     stego = dctObj.encode(helper.bytes_to_binary(comp))
-    # except Exception as err:
-    #     print("Unexpected error: ", err)
-    #     stego = None
+    image = cv2.imread("example/Lenna.png", flags=cv2.IMREAD_COLOR)
+    dctObj = DCT(cover_image=image)
+    try:
+        stego = dctObj.encode(helper.bytes_to_binary(comp))
+    except Exception as err:
+        print("Unexpected error: ", err)
+        stego = None
     # print("size cover: ", image.size)
-    # print("PSNR real: ", PSNR(dctObj.image, stego))
+    # print("PSNR real: ", helper.PSNR(dctObj.image, stego))
     ########## ENCODING END###########
 
     ########### DECODING###########
@@ -333,13 +320,14 @@ if __name__ == "__main__":
     # message = dctObj.decode(prep_image(stego)[1])
     message2 = dctObj.decode(stego2_cropped)
     # print("message final: ", message)
-    # print('PSNR: ', PSNR(image, stego2))
-    # print("similarity: ", similar(helper.bytes_to_binary(comp), message))
-    print("similarity2: ", similar(helper.bytes_to_binary(comp), message2))
+    # print('PSNR: ', helper.PSNR(image, stego2))
+    # print("similarity: ", helper.similar(helper.bytes_to_binary(comp), message))
+    print("similarity2: ", helper.similar(
+        helper.bytes_to_binary(comp), message2))
 
     msg = helper.binary_to_bytes(message2)
 
-    print("similarity bytes: ", similar(comp, msg))
+    print("similarity bytes: ", helper.similar(comp, msg))
     print(zlib.decompress(msg).decode("UTF-8")[:100])
     ########### DECODING END###########
 
@@ -347,7 +335,7 @@ if __name__ == "__main__":
     # print("float: ", helper.bytes_to_binary(struct.pack('>f', 19.90)))
     # print("float: ", helper.bytes_to_binary(struct.pack('>f', -19.90)))
 
-    # print("\nPSNR: ", PSNR(imageArr, np.round(cv2.idct(np.float32(quantized)))))
-    # print("PSNR: ", PSNR(imageArr, np.round(cv2.idct(np.float32(dequantized)))))
-    # print("\nPSNR: ", PSNR(imageArr, np.round(
+    # print("\nPSNR: ", helper.PSNR(imageArr, np.round(cv2.idct(np.float32(quantized)))))
+    # print("PSNR: ", helper.PSNR(imageArr, np.round(cv2.idct(np.float32(dequantized)))))
+    # print("\nPSNR: ", helper.PSNR(imageArr, np.round(
     #     cv2.idct(np.float32(dct)))))

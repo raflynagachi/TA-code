@@ -1,5 +1,5 @@
 import streamlit as st
-from app.view.utils import *
+from app.view.utils_encode import *
 from app.algo.dct import *
 
 st.set_page_config(page_title="Encode Message", page_icon="🔒")
