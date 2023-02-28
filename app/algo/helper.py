@@ -1,10 +1,12 @@
 import struct
 import random
 import numpy as np
+import math
 from sys import byteorder
 from math import log2, ceil
 from typing import List
 from random import randrange
+from difflib import SequenceMatcher
 
 
 def float_to_binary(num):
@@ -79,6 +81,11 @@ def PSNR(original, stego):
 
 def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
+
+
+def max_bit_cap(m, n):
+    # 8 is embedded bit in block 8x8
+    return (m*n/64) * 8
 
 
 def __hamming_common(src: List[List[int]], s_num: int, encode=True) -> None:

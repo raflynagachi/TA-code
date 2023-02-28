@@ -6,6 +6,7 @@ from app.algo.dct import *
 import zlib
 from PIL import Image
 from sys import getsizeof
+import time
 
 state = {}
 
@@ -15,14 +16,15 @@ def showImage(col, image):
 
 
 def upload_photo(col, dct):
-    uploaded_file = col.file_uploader("Choose an image", type=['png', 'jpeg'])
-    if uploaded_file != None:
-        image = Image.open(uploaded_file)
+    upload_file = col.file_uploader(
+        "Choose an image", type=['png', 'jpeg', 'jpg'])
+    if upload_file != None:
+        image = Image.open(upload_file)
         state["stego_image"] = True
         showImage(col, image)
         image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
         dct.set_cover_image(image)
-        uploaded_file = None
+        upload_file = None
     else:
         state["stego_image"] = False
 
@@ -40,12 +42,20 @@ def run_extract_message(col1, col2, dct):
 
     # BUTTON
     if col2.button("Extract", disabled=state.get("no_extract_process", True)) and dct.image is not None:
+        start_time = time.time()
         message = dct.decode(dct.image)  # binary output
+        end_time = time.time()
         state["message"] = helper.binary_to_bytes(message)
+        est_time = end_time - start_time
+        col1.write("extract computation time: {:.2f}s".format(est_time))
     if col2.button("Uncompress", disabled=(state.get("message", None) is None)):
+        start_time = time.time()
         comp = zlib.decompress(state["message"])  # bytes output
+        end_time = time.time()
         state["message"] = comp  # turn bytes to binary
         state["uncompressed"] = True
+        est_time = end_time - start_time
+        col1.write("uncompress computation time: {:.2f}s".format(est_time))
 
     if state.get("message", None) is not None:
         # open text file
