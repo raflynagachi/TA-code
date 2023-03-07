@@ -83,9 +83,9 @@ def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
 
-def max_bit_cap(m, n):
-    # 8 is embedded bit in block 8x8
-    return (m*n/64) * 8
+def max_bit_cap(m, n, bit_embedded):
+    # bit_embedded is embedded bit in block 8x8
+    return (m*n/64) * bit_embedded
 
 
 def __hamming_common(src: List[List[int]], s_num: int, encode=True) -> None:

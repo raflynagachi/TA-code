@@ -1,9 +1,9 @@
 import numpy as np
 import math
-from app.algo import zigzag as zg
-from app.algo import helper
-# import zigzag as zg
-# import helper
+# from app.algo import zigzag as zg
+# from app.algo import helper
+import zigzag as zg
+import helper
 import zlib
 import struct
 import cv2
@@ -13,15 +13,14 @@ from difflib import SequenceMatcher
 
 """
 Pseudocode:
-1. konversi nilai piksel BGR menjadi YCbCr
-2. Citra digital dipecah menjadi blok 8x8
-3. Matriks orisinil dikurangi 128
-4. Perhitungan DCT
-5. Kompresi blok dengan matriks kuantisasi JPEG
-6. Bentuk matriks 1 dimensi dengan zig-zag scanning
-7. Sisipkan pesan rahasia (biner) ke middle frequency LSB
-8. Dekuantisasi blok 8x8 dan Invers DCT
-9. Blok 8x8 ditambah 128
+1. Citra digital dipecah menjadi blok 8x8
+2. Matriks orisinil dikurangi 128
+3. Perhitungan DCT
+4. Kompresi blok dengan matriks kuantisasi JPEG
+5. Bentuk matriks 1 dimensi dengan zig-zag scanning
+6. Sisipkan pesan rahasia (biner) ke middle frequency pada LSB
+7. Dekuantisasi blok 8x8 dan Invers DCT
+8. Blok 8x8 ditambah 128
 """
 
 
@@ -128,35 +127,49 @@ class DCT:
         return dctMat
 
     def embed_message(self, block, encoded_data):
-        start_idx, end_idx = 14, 24
-        i = 0
-        # print("block: ", block[start_idx:end_idx])
-        for item in block[start_idx: end_idx]:
-            if len(encoded_data) == 0:
-                break
+        # start_idx, end_idx = 14, 18
+        indexes = [(20, 24)]
+        # i = 0
+        # for item in block[start_idx: end_idx]:
+        for start_idx, end_idx in indexes:
+            # if len(encoded_data) == 0:
+            #     break
 
-            embed = helper.int_to_binary(item, True)
-            embed = embed[:-1] + encoded_data[0]
-            embed = helper.binary_to_int(embed)
-            block[start_idx + i] = embed
+            if block[start_idx] == block[end_idx] and encoded_data[0] == "1":
+                block[start_idx] += 1.5
+                # block[end_idx] += 0
+            if (encoded_data[0] == "0" and block[start_idx] < block[end_idx]) or (encoded_data[0] == "1" and block[start_idx] >= block[end_idx]):
+                block[start_idx], block[end_idx] = block[end_idx], block[start_idx]
+
+            # curr_coef = np.int32(np.rint(item))
+            # embed = helper.int_to_binary(curr_coef, True)
+            # embed = embed[:-1] + encoded_data[0]
+            # embed = helper.binary_to_int(embed)
+            # block[start_idx + i] = np.float32(embed)
+            # i+=1
 
             encoded_data = encoded_data[1:]
-            i += 1
         return block, encoded_data
 
     def extract_message(self, block, message, max_char):
-        start_idx, end_idx = 14, 24
+        # start_idx, end_idx = 14, 18
+        indexes = [(20, 24)]
         i = 0 if message == "" else len(message)
         # print("block: ", block[start_idx:end_idx])
-        for item in block[start_idx: end_idx]:
-            if max_char != 0 and max_char == len(message):
-                break
+        # for item in block[start_idx: end_idx]:
+        for start_idx, end_idx in indexes:
+            # if max_char != 0 and max_char == len(message):
+            #     break
 
-            embed = helper.int_to_binary(item, True)
-            message += embed[-1]
+            encode_bit = "0" if block[start_idx] >= block[end_idx] else "1"
+            message += encode_bit
+
+            # curr_coef = np.int32(np.rint(item))
+            # embed = helper.int_to_binary(curr_coef, True)
+            # message += embed[-1]
 
             if i == 31 and max_char == 0:
-                print("message 31: ", message)
+                print("message length: ", message)
                 max_char = helper.binary_to_int(message)
                 message = ""
 
@@ -166,11 +179,17 @@ class DCT:
     def post_image(self, stego):
         # retrieve cropped pixel
         image = self.ori_img
+        print("Sebelum: ", np.min(image), np.max(image))
         image[:stego.shape[0], :stego.shape[1]] = stego
-        # image = cv2.cvtColor(np.float32(image), cv2.COLOR_YCR_CB2BGR)
-        # image = np.uint8(np.clip(image, 0, 255))
+        image = cv2.cvtColor(np.float32(image), cv2.COLOR_YCR_CB2BGR)
+        image = np.uint8(np.clip(image, 0, 255))
+        # min_val = np.min(image)
+        # max_val = np.max(image)
+        # image = (
+        #     255 * (image - min_val) / (max_val - min_val)).astype(int)
         cv2.imwrite("stego_image.png", image)
-        print("stego ori2 BGR: ", np.array(image)[0][0])
+        print("Sesudah: ", np.min(image), np.max(image))
+        # print("stego ori2 BGR: ", np.array(image)[0][0])
         return image
 
     def encode(self, message):
@@ -178,13 +197,14 @@ class DCT:
             return
 
         # index for embedded
-        idx_channel = 0
+        idx_channel = 1
         # message = helper.hamming_encode(message, self.HAMMING)
         message = helper.int_to_binary(len(message), True) + message
 
+        dct_blocks = self.channel[idx_channel]
         # modify only for specific layer
         dct_blocks = [np.subtract(block, 128)
-                      for block in self.channel[idx_channel]]
+                      for block in dct_blocks]
 
         # forward dct stage
         dct_blocks = [cv2.dct(block.astype(float))
@@ -199,7 +219,7 @@ class DCT:
                 break
 
             # sort dct coefficient by frequency
-            sorted_coef = np.rint(zg.zigzag(block)).astype(int)
+            sorted_coef = zg.zigzag(block)
             # print("before: ", sorted_coef)
 
             # embed message into DCT coefficient
@@ -210,11 +230,11 @@ class DCT:
             dct_blocks[idx] = zg.inverse_zigzag(sorted_coef, 8, 8)
 
         if len(message) != 0:
-            raise Exception("not enough block")
+            raise Exception("not enough block\n")
 
         embedded_block = [block * self.quant_table for block in dct_blocks]
-        embedded_block = np.rint([cv2.idct(block.astype(float))
-                                  for block in embedded_block]).astype(int)
+        embedded_block = [cv2.idct(block)
+                          for block in embedded_block]
         embedded_block = [np.add(block, 128) for block in embedded_block]
 
         stego_channel = []
@@ -224,7 +244,7 @@ class DCT:
                 continue
             stego_channel.append(self.channel[i])
         stego_image = helper.array_to_image(self.image, stego_channel)
-        print("stego ori: ", stego_image[0][0])
+        # print("stego ori: ", stego_image[0][0])
 
         # saving image
         stego_image = self.post_image(stego_image)
@@ -237,15 +257,15 @@ class DCT:
         max_char = 0
 
         # modify only for Y (luminance) layer
-        idx_channel = 0
+        idx_channel = 1
         imageArr = helper.split_image_to_block(
             np.float32(imageArr)[:, :, idx_channel], self.BLOCK_SIZE)
-        stego_image = [np.subtract(block, 128)
-                       for block in imageArr]
+        imageArr = [np.subtract(block, 128)
+                    for block in imageArr]
 
         # forward dct stage
-        dct_blocks = [cv2.dct(block.astype(float))
-                      for block in stego_image]
+        dct_blocks = [cv2.dct(block)
+                      for block in imageArr]
         # quantize
         dct_blocks = [np.round(block/self.quant_table) for block in dct_blocks]
 
@@ -255,7 +275,7 @@ class DCT:
                 break
 
             # sort dct coefficient by frequency
-            sorted_coef = np.rint(zg.zigzag(block)).astype(int)
+            sorted_coef = zg.zigzag(block)
 
             # embed message into DCT coefficient
             message, max_char = self.extract_message(
@@ -265,19 +285,19 @@ class DCT:
         return message
 
 
-def prep_image(img, conv=False):
+def prep_image(img, conv=True):
     ori_img = np.float32(img)
     if conv:
-        # ori_img = cv2.cvtColor(np.float32(ori_img), cv2.COLOR_BGR2YCR_CB)
-        pass
+        ori_img = cv2.cvtColor(ori_img, cv2.COLOR_BGR2YCR_CB)
+        # pass
     width, height = ori_img.shape[:2]
 
     # Cropped pixel of image
     # Calculate the number of pixels to pad in the width and height
     width_crp = width - (width % 8)
     height_crp = height - (height % 8)
-    print("SHAPE: ", ori_img.shape)
-    print("final size of cropped w h: ", width_crp, height_crp)
+    # print("SHAPE: ", ori_img.shape)
+    # print("SHAPE CROPPED: ", width_crp, height_crp)
 
     # Create a black pixel with the required padding
     cropped_img = ori_img[
@@ -301,6 +321,8 @@ if __name__ == "__main__":
     ########### ENCODING#############
     image = cv2.imread("example/Lenna.png", flags=cv2.IMREAD_COLOR)
     dctObj = DCT(cover_image=image)
+    print("MAX BYTE CAPACITY: ", helper.max_bit_cap(
+        dctObj.image.shape[0], dctObj.image.shape[1], 1)/8)
     try:
         stego = dctObj.encode(helper.bytes_to_binary(comp))
     except Exception as err:
@@ -314,21 +336,24 @@ if __name__ == "__main__":
     stego2 = cv2.imread("stego_image.png", flags=cv2.IMREAD_COLOR)
     stego2, stego2_cropped = prep_image(stego2)
     # print("stego: ", stego[0][0])
-    print("stego2: ", stego2[0][0])
-    print("stego cropped: ", stego2_cropped[0][0])
+    # print("stego2: ", stego2[0][0])
+    # print("stego cropped: ", stego2_cropped[0][0])
     dctObj = DCT(decode=True)
-    # message = dctObj.decode(prep_image(stego)[1])
+    message = dctObj.decode(prep_image(stego)[1])
     message2 = dctObj.decode(stego2_cropped)
     # print("message final: ", message)
-    # print('PSNR: ', helper.PSNR(image, stego2))
-    # print("similarity: ", helper.similar(helper.bytes_to_binary(comp), message))
-    print("similarity2: ", helper.similar(
-        helper.bytes_to_binary(comp), message2))
+    stego2 = cv2.cvtColor(stego2, cv2.COLOR_YCR_CB2BGR)
+    print('PSNR: ', helper.PSNR(image, stego2))
+    print("similarity: {:.5f}".format(helper.similar(
+        helper.bytes_to_binary(comp), message)))
+    print("similarity2: {:.5f}".format(helper.similar(
+        helper.bytes_to_binary(comp), message2)))
 
     msg = helper.binary_to_bytes(message2)
 
-    print("similarity bytes: ", helper.similar(comp, msg))
-    print(zlib.decompress(msg).decode("UTF-8")[:100])
+    print("similarity bytes: {:.5f}".format(helper.similar(comp, msg)))
+    print("=====\nmessage extracted: \n",
+          zlib.decompress(msg).decode("UTF-8")[:100])
     ########### DECODING END###########
 
     # print("float: ", helper.bytes_to_binary(struct.pack('>f', 19)))
