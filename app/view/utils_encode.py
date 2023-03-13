@@ -20,14 +20,12 @@ def input_message(col, dct):
 
         # To read file as string:
         message = stringio.read()
+        state["no_compress"] = False
+        state["compressed"] = False
+        # state["message"] = str.encode(message)
+        dct.set_message(str.encode(message))
         if state.get("cap", 0) >= getsizeof(message):
-            state["no_compress"] = False
-            state["compressed"] = False
-            # state["message"] = str.encode(message)
-            dct.set_message(str.encode(message))
-        else:
-            st.error(
-                'error: ' + str("message size exceeds embedding capacity"), icon="🚨")
+            state["over_cap"] = False
     else:
         state["no_compress"] = True
         # state["message"] = ""
@@ -48,10 +46,11 @@ def upload_photo(col, dct):
         image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
         dct.set_cover_image(image)
         state["cap"] = helper.max_bit_cap(
-            dct.width, dct.height)/8  # cap in byte
+            dct.width, dct.height, 1)/8  # cap in byte
         uploaded_file = None
     else:
         state["image"] = False
+        state["cap"] = 0
 
 
 def run_stegano(col1, col2, dct):
@@ -61,9 +60,11 @@ def run_stegano(col1, col2, dct):
     if col2.button("Compress", disabled=state.get("no_compress", True)):
         print("\n\nmasuk\n\n")
         comp = zlib.compress(dct.message)
+        if state.get("cap", 0) >= getsizeof(comp):
+            state["over_cap"] = False
         state["message"] = comp
         state["compressed"] = True
-    if col2.button("Process", disabled=state.get("no_process", True)) and dct.channel != None:
+    if col2.button("Process", disabled=state.get("no_process", True) and state.get("over_cap", True)):
         state["processed"] = False
         try:
             msg = state["message"] if state.get(
@@ -89,13 +90,17 @@ def run_stegano(col1, col2, dct):
 
     # Description
     state["no_process"] = False if (
-        state.get("image", True) and dct.message != "") else True
+        state.get("image", True) and dct.message != "" and not state.get("over_cap", True)) else True
     if state.get("image", True) and dct.image is not None:
         col1.write("✔ image uploaded " + "{}".format(dct.image.shape[:2]))
         col1.write("max capacity: " +
                    str(state["cap"]/1000) + "KB")
     else:
         col1.write("✘ no image")
+
+    if not state.get("over_cap", True) and state.get("image", True) and dct.message != "":
+        st.error(
+            'error: ' + str("message size exceeds embedding capacity"), icon="🚨")
 
     if dct.message != "":
         col1.write("✔ message uploaded")

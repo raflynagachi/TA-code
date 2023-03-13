@@ -38,6 +38,14 @@ class DCT:
                           [24,  35,  55,  64,  81, 104, 113,  92],
                           [49,  64,  78,  87, 103, 121, 120, 101],
                           [72,  92,  95,  98, 112, 100, 103,  99]]
+    QUANTIZATION_TABLE2 = [[46,  1,  2,  0,  0,  0,  1.3,  0],
+                           [0,  0,  0,  1.3,  0,  0,  0,  0],
+                           [0,  0,  0,  -0.4,  0,  0,  0,  0],
+                           [0,  -0.4,  0,  0,  0,  0,  0,  0],
+                           [0,  -0.4,  1.3,  0,  0, 0, 0,  0],
+                           [0,  0,  0,  0,  0, 0, 0,  0],
+                           [0,  0,  0,  0, 0, 0, 0, 0],
+                           [0,  0,  0,  0, 0, 0, 0,  0]]
 
     def __init__(self, decode=False, cover_image=None):
         self.quant_table = np.float32(self.QUANTIZATION_TABLE)
@@ -117,6 +125,8 @@ class DCT:
                         cv = float(1 / math.sqrt(2)) if v == 0 else 1
                         val = math.cos((2*x+1)*(u*math.pi)/16) * \
                             math.cos((2*y+1)*(v*math.pi)/16)
+                        # if u == 0:
+                        #     print("LOL: ", u, v, (block[u][v] * cu * cv * val))
                         foo += (block[u][v] * cu * cv * val)
 
                 foo = round(0.25 * foo)
@@ -128,16 +138,16 @@ class DCT:
 
     def embed_message(self, block, encoded_data):
         # start_idx, end_idx = 14, 18
-        indexes = [(20, 24)]
+        indexes = [(20, 24), (12, 14), (18, 28)]
         # i = 0
         # for item in block[start_idx: end_idx]:
         for start_idx, end_idx in indexes:
-            # if len(encoded_data) == 0:
-            #     break
+            if len(encoded_data) == 0:
+                break
 
             if block[start_idx] == block[end_idx] and encoded_data[0] == "1":
-                block[start_idx] += 1.5
-                # block[end_idx] += 0
+                block[start_idx] += 1.3
+                block[end_idx] -= 0.4
             if (encoded_data[0] == "0" and block[start_idx] < block[end_idx]) or (encoded_data[0] == "1" and block[start_idx] >= block[end_idx]):
                 block[start_idx], block[end_idx] = block[end_idx], block[start_idx]
 
@@ -153,13 +163,13 @@ class DCT:
 
     def extract_message(self, block, message, max_char):
         # start_idx, end_idx = 14, 18
-        indexes = [(20, 24)]
+        indexes = [(20, 24), (12, 14), (18, 28)]
         i = 0 if message == "" else len(message)
         # print("block: ", block[start_idx:end_idx])
         # for item in block[start_idx: end_idx]:
         for start_idx, end_idx in indexes:
-            # if max_char != 0 and max_char == len(message):
-            #     break
+            if max_char != 0 and max_char == len(message):
+                break
 
             encode_bit = "0" if block[start_idx] >= block[end_idx] else "1"
             message += encode_bit
@@ -321,8 +331,19 @@ if __name__ == "__main__":
     ########### ENCODING#############
     image = cv2.imread("example/Lenna.png", flags=cv2.IMREAD_COLOR)
     dctObj = DCT(cover_image=image)
+    # matn = np.rint(cv2.dct(np.rint(cv2.idct(np.float32(dctObj.QUANTIZATION_TABLE2)
+    # * dctObj.QUANTIZATION_TABLE)))/dctObj.QUANTIZATION_TABLE)
+    # mmm = "\\left[\\begin{matrix}"
+    # for x in matn:
+    #     for y in x:
+    #         mmm += "{}&".format(round(y))
+    #         print("{:.3f}".format(y), end=" ")
+    #     mmm += "\\\\"
+    #     print("\n")
+    # mmm += "\\\\\end{matrix}\\right]"
+    # print("MES: ", mmm)
     print("MAX BYTE CAPACITY: ", helper.max_bit_cap(
-        dctObj.image.shape[0], dctObj.image.shape[1], 1)/8)
+        dctObj.image.shape[0], dctObj.image.shape[1], 3)/8)
     try:
         stego = dctObj.encode(helper.bytes_to_binary(comp))
     except Exception as err:
@@ -342,7 +363,7 @@ if __name__ == "__main__":
     message = dctObj.decode(prep_image(stego)[1])
     message2 = dctObj.decode(stego2_cropped)
     # print("message final: ", message)
-    stego2 = cv2.cvtColor(stego2, cv2.COLOR_YCR_CB2BGR)
+    stego2 = cv2.cvtColor(np.float32(stego2), cv2.COLOR_YCR_CB2BGR)
     print('PSNR: ', helper.PSNR(image, stego2))
     print("similarity: {:.5f}".format(helper.similar(
         helper.bytes_to_binary(comp), message)))
