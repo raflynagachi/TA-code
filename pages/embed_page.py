@@ -2,9 +2,9 @@ import streamlit as st
 from app.view.utils_encode import *
 from app.algo.dct import *
 
-st.set_page_config(page_title="Encode Message", page_icon="🔒")
+st.set_page_config(page_title="Embed Message", page_icon="🔒")
 
-st.markdown("# Encode Message")
+st.markdown("# Embed Message")
 st.markdown("""
 Insert a secret message in the form of text into an image. Text messages will be embedded into images using the DCT steganography method
 Secret messages can be compressed (_optional_) to reduce the size of the message to be embedded.

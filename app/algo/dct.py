@@ -1,9 +1,9 @@
 import numpy as np
 import math
-# from app.algo import zigzag as zg
-# from app.algo import helper
-import zigzag as zg
-import helper
+from app.algo import zigzag as zg
+from app.algo import helper
+# import zigzag as zg
+# import helper
 import zlib
 import struct
 import cv2
@@ -48,7 +48,7 @@ class DCT:
                            [0,  0,  0,  0, 0, 0, 0,  0]]
 
     def __init__(self, decode=False, cover_image=None):
-        self.quant_table = np.float32(self.QUANTIZATION_TABLE)
+        self.quant_table = np.float32(self.QUANTIZATION_TABLE)/4
         self.ori_img, self.image = None, None
         self.height, self.width = 0, 0
         self.ori_width, self.ori_height = 0, 0
@@ -56,6 +56,8 @@ class DCT:
         self.message = ""
         if not decode:
             self.ori_img, self.image = prep_image(cover_image, conv=True)
+            # self.coeffs = pywt.wavedec2(image, 'haar', level=1)
+            # self.LL = np.float32(self.coeffs[0])
             self.height, self.width = self.image.shape[:2]
             self.ori_width, self.ori_height = cover_image.shape[:2]
             self.channel = [
@@ -137,52 +139,62 @@ class DCT:
         return dctMat
 
     def embed_message(self, block, encoded_data):
-        # start_idx, end_idx = 14, 18
-        indexes = [(20, 24), (12, 14), (18, 28)]
-        # i = 0
-        # for item in block[start_idx: end_idx]:
+        # start_idx, end_idx = 14, 24
+        # indexes = [(x, x+1) for x in range(start_idx, end_idx+1, 2)]
+        indexes = [(20, 24), (12, 16), (14, 18), (19, 23)]
+        # for i in range(start_idx, end_idx, 1):
         for start_idx, end_idx in indexes:
             if len(encoded_data) == 0:
                 break
 
+            # # Update coefficients
+            # block[i] = block[i] + Dj
+            # block[i+1] = block[i] - Dj
+            # print(bit1, bit2, Dj, block[i], block[i+1])
+            # encoded_data = encoded_data[2:]
+
+            # Swapping DCT
+            # diff = (block[start_idx] - block[end_idx])
             if block[start_idx] == block[end_idx] and encoded_data[0] == "1":
-                block[start_idx] += 1.3
-                block[end_idx] -= 0.4
+                block[start_idx] += 1.5
+                # block[end_idx] += -2
             if (encoded_data[0] == "0" and block[start_idx] < block[end_idx]) or (encoded_data[0] == "1" and block[start_idx] >= block[end_idx]):
                 block[start_idx], block[end_idx] = block[end_idx], block[start_idx]
+            encoded_data = encoded_data[1:]
 
-            # curr_coef = np.int32(np.rint(item))
+            # LSB
+            # curr_coef = np.int32(np.rint(block[i]))
             # embed = helper.int_to_binary(curr_coef, True)
             # embed = embed[:-1] + encoded_data[0]
             # embed = helper.binary_to_int(embed)
-            # block[start_idx + i] = np.float32(embed)
-            # i+=1
-
-            encoded_data = encoded_data[1:]
+            # block[i] = np.float32(embed)
+            # encoded_data = encoded_data[1:]
         return block, encoded_data
 
     def extract_message(self, block, message, max_char):
-        # start_idx, end_idx = 14, 18
-        indexes = [(20, 24), (12, 14), (18, 28)]
+        # start_idx, end_idx = 14, 24
+        # indexes = [(x, x+1) for x in range(start_idx, end_idx+1, 2)]
+        indexes = [(20, 24), (12, 16), (14, 18), (19, 23)]
         i = 0 if message == "" else len(message)
         # print("block: ", block[start_idx:end_idx])
-        # for item in block[start_idx: end_idx]:
+        # for j in range(start_idx, end_idx, 1):
         for start_idx, end_idx in indexes:
             if max_char != 0 and max_char == len(message):
                 break
 
+            # Swapping DCT
             encode_bit = "0" if block[start_idx] >= block[end_idx] else "1"
             message += encode_bit
 
-            # curr_coef = np.int32(np.rint(item))
+            # LSB
+            # curr_coef = np.int32(np.rint(block[j]))
             # embed = helper.int_to_binary(curr_coef, True)
             # message += embed[-1]
 
-            if i == 31 and max_char == 0:
-                print("message length: ", message)
-                max_char = helper.binary_to_int(message)
-                message = ""
-
+            if i >= 31 and max_char == 0:
+                print("message length: ", message[:32])
+                max_char = helper.binary_to_int(message[:32])
+                message = message[32:]
             i += 1
         return message, max_char
 
@@ -274,7 +286,7 @@ class DCT:
                     for block in imageArr]
 
         # forward dct stage
-        dct_blocks = [cv2.dct(block)
+        dct_blocks = [cv2.dct(block.astype(float))
                       for block in imageArr]
         # quantize
         dct_blocks = [np.round(block/self.quant_table) for block in dct_blocks]
@@ -329,7 +341,7 @@ if __name__ == "__main__":
     ########### TEXT END#############
 
     ########### ENCODING#############
-    image = cv2.imread("example/Lenna.png", flags=cv2.IMREAD_COLOR)
+    image = cv2.imread("example/laut.jpg", flags=cv2.IMREAD_COLOR)
     dctObj = DCT(cover_image=image)
     # matn = np.rint(cv2.dct(np.rint(cv2.idct(np.float32(dctObj.QUANTIZATION_TABLE2)
     # * dctObj.QUANTIZATION_TABLE)))/dctObj.QUANTIZATION_TABLE)
@@ -343,7 +355,7 @@ if __name__ == "__main__":
     # mmm += "\\\\\end{matrix}\\right]"
     # print("MES: ", mmm)
     print("MAX BYTE CAPACITY: ", helper.max_bit_cap(
-        dctObj.image.shape[0], dctObj.image.shape[1], 3)/8)
+        dctObj.image.shape[0], dctObj.image.shape[1], 4)/8)
     try:
         stego = dctObj.encode(helper.bytes_to_binary(comp))
     except Exception as err:
@@ -372,16 +384,8 @@ if __name__ == "__main__":
 
     msg = helper.binary_to_bytes(message2)
 
-    print("similarity bytes: {:.5f}".format(helper.similar(comp, msg)))
+    print("similarity bytes: {:.5f}".format(
+        helper.similar(comp, msg)))
     print("=====\nmessage extracted: \n",
           zlib.decompress(msg).decode("UTF-8")[:100])
     ########### DECODING END###########
-
-    # print("float: ", helper.bytes_to_binary(struct.pack('>f', 19)))
-    # print("float: ", helper.bytes_to_binary(struct.pack('>f', 19.90)))
-    # print("float: ", helper.bytes_to_binary(struct.pack('>f', -19.90)))
-
-    # print("\nPSNR: ", helper.PSNR(imageArr, np.round(cv2.idct(np.float32(quantized)))))
-    # print("PSNR: ", helper.PSNR(imageArr, np.round(cv2.idct(np.float32(dequantized)))))
-    # print("\nPSNR: ", helper.PSNR(imageArr, np.round(
-    #     cv2.idct(np.float32(dct)))))

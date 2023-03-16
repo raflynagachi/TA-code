@@ -2,9 +2,9 @@ import streamlit as st
 from app.view.utils_decode import *
 from app.algo.dct import *
 
-st.set_page_config(page_title="Decode Message", page_icon="🔓")
+st.set_page_config(page_title="Extract Message", page_icon="🔓")
 
-st.markdown("# Decode Message")
+st.markdown("# Extract Message")
 st.markdown("""
 Extract secret message from an image. Extracted message could be compressed message or plain UTF-8 text.
     
