@@ -57,6 +57,8 @@ def upload_photo(col, dct):
 def run_stegano(col1, col2, dct):
     # print("STATE: ", state)
     stego_image = None
+    state["no_process"] = False if (
+        state.get("image", True) and dct.message != "" and not state.get("over_cap", True)) else True
     # BUTTON
     if col2.button("Compress", disabled=state.get("no_compress", True)):
         comp = zlib.compress(dct.message)
@@ -64,7 +66,7 @@ def run_stegano(col1, col2, dct):
             state["over_cap"] = False
         state["message"] = comp
         state["compressed"] = True
-    if col2.button("Process", disabled=state.get("no_process", True) and state.get("over_cap", True)):
+    if col2.button("Process", disabled=state.get("no_process", True) and state.get("over_cap", True) and (state.get("message", b'') == b'') or dct.message == ''):
         try:
             msg = state["message"] if state.get(
                 "message", b'') != b'' else dct.message
@@ -79,23 +81,25 @@ def run_stegano(col1, col2, dct):
     if state.get("processed", True) and stego_image is not None:
         image = cv2.imread("stego_image.png", flags=cv2.IMREAD_COLOR)
         image, image_cropped = dct_helper.prep_image(image)
-        msg2 = helper.binary_to_bytes(dct.decode(image_cropped))
-        col1.write("similarity bytes: {:.5f}".format(
-            helper.similar(msg, msg2)))
 
         # image = cv2.cvtColor(np.float32(image), cv2.COLOR_BGR2YCR_CB)
         col1.write("PSNR: {:.3f}".format(helper.PSNR(dct.ori_img, image)))
-        with open("stego_image.png", "rb") as file:
-            btn = col2.download_button(
-                label="Download result",
-                data=file,
-                file_name="stego_image.png",
-                mime="image/png"
-            )
+        msg2 = helper.binary_to_bytes(dct.decode(image_cropped))
+        similarity = helper.similar(msg, msg2)
+        col1.write("similarity bytes: {:.5f}".format(similarity))
+        if similarity == 1:
+            with open("stego_image.png", "rb") as file:
+                btn = col2.download_button(
+                    label="Download result",
+                    data=file,
+                    file_name="stego_image.png",
+                    mime="image/png"
+                )
+        else:
+            col1.error(
+                "error: recovery accuracy is {:.3f} %".format(similarity*100), icon="🚨")
 
     # Description
-    state["no_process"] = False if (
-        state.get("image", True) and dct.message != "" and not state.get("over_cap", True)) else True
     if state.get("image", True) and dct.image is not None:
         col1.write("✔ image uploaded " + "{}".format(dct.image.shape[:2]))
         col1.write("max capacity: " +
