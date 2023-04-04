@@ -23,6 +23,7 @@ def input_message(col, dct):
         message = stringio.read()
         state["no_compress"] = False
         state["compressed"] = False
+        state["over_cap"] = True
         # state["message"] = str.encode(message)
         dct.set_message(str.encode(message))
         if state.get("cap", 0) >= getsizeof(message):
@@ -80,13 +81,14 @@ def run_stegano(col1, col2, dct):
             st.error('error: ' + str(err), icon="🚨")
     if state.get("processed", True) and stego_image is not None:
         image = cv2.imread("stego_image.png", flags=cv2.IMREAD_COLOR)
-        image, image_cropped = dct_helper.prep_image(image)
+        _, image_cropped = dct_helper.prep_image(image)
 
         # image = cv2.cvtColor(np.float32(image), cv2.COLOR_BGR2YCR_CB)
+        col1.write("MSE: {:.3f}".format(helper.MSE(dct.ori_img, image)))
         col1.write("PSNR: {:.3f}".format(helper.PSNR(dct.ori_img, image)))
         msg2 = helper.binary_to_bytes(dct.decode(image_cropped))
         similarity = helper.similar(msg, msg2)
-        col1.write("similarity bytes: {:.5f}".format(similarity))
+        col1.write("recovery accuracy: {:.3f}%".format(similarity*100))
         if similarity == 1:
             with open("stego_image.png", "rb") as file:
                 btn = col2.download_button(
@@ -97,7 +99,7 @@ def run_stegano(col1, col2, dct):
                 )
         else:
             col1.error(
-                "error: recovery accuracy is {:.3f} %".format(similarity*100), icon="🚨")
+                "error: recovery accuracy is {:.3f}%".format(similarity*100), icon="🚨")
 
     # Description
     if state.get("image", True) and dct.image is not None:

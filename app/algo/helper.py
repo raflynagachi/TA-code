@@ -70,8 +70,13 @@ def array_to_image(image, channel):
     return stego_image
 
 
-def PSNR(original, stego):
+def MSE(original, stego):
     mse = np.mean((original - stego) ** 2)
+    return mse
+
+
+def PSNR(original, stego):
+    mse = MSE(original, stego)
     if (mse == 0):
         return 100
     max_pixel = 255.0

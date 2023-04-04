@@ -10,10 +10,10 @@ Extract secret message from an image. Extracted message could be compressed mess
     
 Button:  
 **extract** ==> extract message from an stego image  
-**uncompressed** ==> uncompressing extracted message using inverse of deflate compression
+**uncompressed** ==> uncompressing extracted message using deflate decompression
 """)
 
-dct = DCT(decode=True)
+dct = DCT(is_decode=True)
 st.markdown('---')
 col1, col2, col3 = st.columns([1, 1, 3])
 upload_photo(col3, dct)

@@ -59,7 +59,9 @@ def run_extract_message(col1, col2, dct):
             state["uncompressed"] = True
             est_time = end_time - start_time
             col1.write("uncompress computation time: {:.2f}s".format(est_time))
+            state['error'] = False
         except Exception as err:
+            state['error'] = True
             col1.error("Error: " + str(err), icon="🚨")
 
     if state.get("message", None) is not None and not state.get("no_extract_process", True):
@@ -81,4 +83,5 @@ def run_extract_message(col1, col2, dct):
                     mime="plain/txt"
                 )
         except Exception as err:
+            state['error'] = True
             col1.error('Error: ' + str(err), icon="🚨")
