@@ -1,7 +1,7 @@
 import numpy as np
 import math
-# from app.algo import helper
-import helper
+from app.algo.helper import *
+# import helper
 import zlib
 import struct
 import cv2
@@ -42,11 +42,11 @@ class DCT:
         self.height, self.width = self.image.shape[:2]
         self.ori_width, self.ori_height = cover_image.shape[:2]
         self.channel = [
-            np.float32(helper.split_image_to_block(
+            np.float32(split_image_to_block(
                 self.image[:, :, 0], self.BLOCK_SIZE)),
-            np.float32(helper.split_image_to_block(
+            np.float32(split_image_to_block(
                 self.image[:, :, 1], self.BLOCK_SIZE)),
-            np.float32(helper.split_image_to_block(
+            np.float32(split_image_to_block(
                 self.image[:, :, 2], self.BLOCK_SIZE))
         ]
 
@@ -135,7 +135,7 @@ class DCT:
 
             if i >= 31 and max_char == 0:
                 print("message length: ", message[:32])
-                max_char = helper.binary_to_int(message[:32])
+                max_char = binary_to_int(message[:32])
                 message = message[32:]
             i += 1
         return message, max_char
@@ -156,8 +156,8 @@ class DCT:
             return
 
         # add length of message as binary
-        message = helper.int_to_binary(len(message), True) + message
-        if getsizeof(helper.binary_to_bytes(message)) > helper.max_bit_cap(self.width, self.height, 4)/8:
+        message = int_to_binary(len(message), True) + message
+        if getsizeof(binary_to_bytes(message)) > max_bit_cap(self.width, self.height, 4)/8:
             raise Exception("not enough block\n")
 
         # index for embedded
@@ -202,7 +202,7 @@ class DCT:
                 stego_channel.append(embedded_block)
                 continue
             stego_channel.append(self.channel[i])
-        stego_image = helper.array_to_image(self.image, stego_channel)
+        stego_image = array_to_image(self.image, stego_channel)
 
         # saving image
         stego_image = self.post_image(stego_image)
@@ -215,7 +215,7 @@ class DCT:
 
         # modify only for Cr layer
         idx_channel = 1
-        imageArr = helper.split_image_to_block(
+        imageArr = split_image_to_block(
             np.float32(imageArr)[:, :, idx_channel], self.BLOCK_SIZE)
         imageArr = [np.subtract(block, 128)
                     for block in imageArr]
@@ -267,7 +267,7 @@ if __name__ == "__main__":
     comp = zlib.compress(originalMessage)
     print("Ori: ", getsizeof(originalMessage))
     print("Comp: ", getsizeof(comp))
-    # print("Comp: ", helper.bytes_to_binary(comp))
+    # print("Comp: ", bytes_to_binary(comp))
     ########### TEXT END#############
 
     ########### ENCODING#############
@@ -284,15 +284,15 @@ if __name__ == "__main__":
     #     print("\n")
     # mmm += "\\\\\end{matrix}\\right]"
     # print("MES: ", mmm)
-    print("MAX BYTE CAPACITY: ", helper.max_bit_cap(
+    print("MAX BYTE CAPACITY: ", max_bit_cap(
         dctObj.image.shape[0], dctObj.image.shape[1], 4)/8)
     try:
-        stego = dctObj.encode(helper.bytes_to_binary(comp))
+        stego = dctObj.encode(bytes_to_binary(comp))
     except Exception as err:
         print("Unexpected error: ", err)
         stego = None
     # print("size cover: ", image.size)
-    # print("PSNR real: ", helper.PSNR(dctObj.image, stego))
+    # print("PSNR real: ", PSNR(dctObj.image, stego))
     ########## ENCODING END###########
 
     ########### DECODING###########
@@ -306,16 +306,16 @@ if __name__ == "__main__":
     message2 = dctObj.decode(stego2_cropped)
     # print("message final: ", message)
     # stego2 = cv2.cvtColor(np.float32(stego2), cv2.COLOR_YCR_CB2BGR)
-    print('PSNR: ', helper.PSNR(coverImage, stego2))
-    print("similarity: {:.5f}".format(helper.similar(
-        helper.bytes_to_binary(comp), message)))
-    print("similarity2: {:.5f}".format(helper.similar(
-        helper.bytes_to_binary(comp), message2)))
+    print('PSNR: ', PSNR(coverImage, stego2))
+    print("similarity: {:.5f}".format(similar(
+        bytes_to_binary(comp), message)))
+    print("similarity2: {:.5f}".format(similar(
+        bytes_to_binary(comp), message2)))
 
-    msg = helper.binary_to_bytes(message2)
+    msg = binary_to_bytes(message2)
 
     print("similarity bytes: {:.5f}".format(
-        helper.similar(comp, msg)))
+        similar(comp, msg)))
     print("=====\nmessage extracted: \n",
           zlib.decompress(msg).decode("UTF-8")[:100])
     ########### DECODING END###########
