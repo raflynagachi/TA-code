@@ -14,18 +14,22 @@ state = {}
 
 def input_message(col, dct):
     upload_file = col.file_uploader(
-        'Upload text', type=['txt'], disabled=not state.get("image", False))
+        'Upload text', type=['txt', 'jpg', 'png'], disabled=not state.get("image", False))
     if upload_file:
-        # To convert to a string based IO:
-        stringio = StringIO(upload_file.getvalue().decode("utf-8"))
+        filetype = upload_file.name.split(".")[-1]
+        if filetype == "txt":
+            # To convert to a string based IO:
+            stringio = StringIO(upload_file.getvalue().decode("utf-8"))
+            # To read file as string:
+            message = stringio.read()
+            dct.set_message(str.encode(message))
+        else:
+            message = upload_file.getvalue()  # image in bytes
+            dct.set_message(message)
 
-        # To read file as string:
-        message = stringio.read()
         state["no_compress"] = False
         state["compressed"] = False
         state["over_cap"] = True
-        # state["message"] = str.encode(message)
-        dct.set_message(str.encode(message))
         if state.get("cap", 0) >= getsizeof(message):
             state["over_cap"] = False
     else:

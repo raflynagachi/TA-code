@@ -1,13 +1,14 @@
 import numpy as np
 import math
 from app.algo.helper import *
-# import helper
+# from helper import *
 import zlib
 import struct
 import cv2
 from bitarray import bitarray
 from sys import getsizeof, byteorder
 from difflib import SequenceMatcher
+import base64
 
 
 class DCT:
@@ -261,17 +262,24 @@ def prep_image(img, conv=True):
 if __name__ == "__main__":
     ########### TEXT#############
     # test compression using zlib
-    with open('example/buggy.txt') as f:
-        lines = f.readlines()
-    originalMessage = str.encode(''.join(lines))
-    comp = zlib.compress(originalMessage)
-    print("Ori: ", getsizeof(originalMessage))
+    # with open('example/buggy.txt') as f:
+    #     lines = f.readlines()
+    # originalMessage = str.encode(''.join(lines))
+    # comp = zlib.compress(originalMessage)
+    # print("Ori: ", getsizeof(originalMessage))
+    # print("Comp: ", getsizeof(comp))
+
+    # penyisipan citra
+    with open('example/rafly.png', 'rb') as file_image:
+        f = file_image.read()
+    comp = zlib.compress(f)
+    print("Ori: ", getsizeof(f))
     print("Comp: ", getsizeof(comp))
     # print("Comp: ", bytes_to_binary(comp))
     ########### TEXT END#############
 
     ########### ENCODING#############
-    coverImage = cv2.imread("example/Lenna.png", flags=cv2.IMREAD_COLOR)
+    coverImage = cv2.imread("example/solar.png", flags=cv2.IMREAD_COLOR)
     dctObj = DCT(cover_image=coverImage)
     # matn = np.rint(cv2.dct(np.rint(cv2.idct(np.float32(dctObj.QUANTIZATION_TABLE2)
     # * dctObj.QUANTIZATION_TABLE)))/dctObj.QUANTIZATION_TABLE)
@@ -307,15 +315,22 @@ if __name__ == "__main__":
     # print("message final: ", message)
     # stego2 = cv2.cvtColor(np.float32(stego2), cv2.COLOR_YCR_CB2BGR)
     print('PSNR: ', PSNR(coverImage, stego2))
-    print("similarity: {:.5f}".format(similar(
+    print("similarity: {:.10f}".format(similar(
         bytes_to_binary(comp), message)))
-    print("similarity2: {:.5f}".format(similar(
+    print("similarity2: {:.10f}".format(similar(
         bytes_to_binary(comp), message2)))
 
     msg = binary_to_bytes(message2)
 
-    print("similarity bytes: {:.5f}".format(
-        similar(comp, msg)))
-    print("=====\nmessage extracted: \n",
-          zlib.decompress(msg).decode("UTF-8")[:100])
+    # print("similarity bytes: {:.5f}".format(
+    #     similar(comp, msg)))
+    # print("=====\nmessage extracted: \n",
+    #       zlib.decompress(msg).decode("UTF-8")[:100])
+
+    coverImage2 = cv2.imread("example/rafly.png", flags=cv2.IMREAD_COLOR)
+    msg = zlib.decompress(msg)
+    jpg_as_np = np.frombuffer(msg, dtype=np.uint8)
+    # msg = cv2.imdecode(jpg_as_np, flags=1)
+    img_np = cv2.imdecode(jpg_as_np, cv2.IMREAD_COLOR)
+    print("PSNR sisip: ", PSNR(coverImage2, img_np))
     ########### DECODING END###########

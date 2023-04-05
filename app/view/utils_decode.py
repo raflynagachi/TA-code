@@ -41,6 +41,8 @@ def run_extract_message(col1, col2, dct):
     else:
         col1.write("✘ no image")
 
+    filetype = col2.radio("embedded file type?", ("text", "image"))
+
     # BUTTON
     if col2.button("Extract", disabled=state.get("no_extract_process", True)) and dct.image is not None:
         start_time = time.time()
@@ -68,20 +70,34 @@ def run_extract_message(col1, col2, dct):
         # write string to file
         # print("MESSAGE HERE: \n", state["message"].decode("UTF-8"))
         try:
-            # open text file
-            text_file = open("data.txt", "w")
-            extracted_msg = state["message"].decode("UTF-8")
-            text_file.write(extracted_msg)
+            if filetype == "text":
+                # open text file
+                text_file = open("data.txt", "w")
+                extracted_msg = state["message"].decode("UTF-8")
+                text_file.write(extracted_msg)
 
-            # close file
-            text_file.close()
-            with open("data.txt", "rb") as file:
-                btn = col2.download_button(
-                    label="Download result",
-                    data=file,
-                    file_name="data.txt",
-                    mime="plain/txt"
-                )
+                # close file
+                text_file.close()
+                with open("data.txt", "rb") as file:
+                    btn = col2.download_button(
+                        label="Download result",
+                        data=file,
+                        file_name="data.txt",
+                        mime="plain/txt"
+                    )
+            else:
+                # open text file
+                jpg_as_np = np.frombuffer(state["message"], dtype=np.uint8)
+                img_np = cv2.imdecode(jpg_as_np, cv2.IMREAD_COLOR)
+                cv2.imwrite("data.jpg", img_np)
+
+                with open("data.jpg", "rb") as file:
+                    btn = col2.download_button(
+                        label="Download result",
+                        data=file,
+                        file_name="data.jpg",
+                        mime="image/jpg"
+                    )
         except Exception as err:
             state['error'] = True
             col1.error('Error: ' + str(err), icon="🚨")
