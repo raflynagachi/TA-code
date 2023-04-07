@@ -6,11 +6,11 @@ st.set_page_config(page_title="Extract Message", page_icon="🔓")
 
 st.markdown("# Extract Message")
 st.markdown("""
-Extract secret message from an image. Extracted message could be compressed message or plain UTF-8 text.
+Extract secret message from an image. Extracted message could be compressed file or plain (text or image).
     
 Button:  
 **extract** ==> extract message from an stego image  
-**uncompressed** ==> uncompressing extracted message using deflate decompression
+**decompress** ==> decompressing extracted message using deflate decompression
 """)
 
 dct = DCT(is_decode=True)

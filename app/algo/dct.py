@@ -330,7 +330,6 @@ if __name__ == "__main__":
     coverImage2 = cv2.imread("example/rafly.png", flags=cv2.IMREAD_COLOR)
     msg = zlib.decompress(msg)
     jpg_as_np = np.frombuffer(msg, dtype=np.uint8)
-    # msg = cv2.imdecode(jpg_as_np, flags=1)
     img_np = cv2.imdecode(jpg_as_np, cv2.IMREAD_COLOR)
     print("PSNR sisip: ", PSNR(coverImage2, img_np))
     ########### DECODING END###########

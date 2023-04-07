@@ -48,7 +48,7 @@ def upload_photo(col, dct):
     if uploaded_file != None:
         image = Image.open(uploaded_file)
         state["image"] = True
-        showImage(col, image)
+        # showImage(col, image)
         image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
         dct.set_cover_image(image)
         state["cap"] = helper.max_bit_cap(

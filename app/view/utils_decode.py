@@ -21,7 +21,7 @@ def upload_photo(col, dct):
     if upload_file != None:
         image = Image.open(upload_file)
         state["stego_image"] = True
-        showImage(col, image)
+        # showImage(col, image)
         image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
         dct.set_cover_image(image)
         upload_file = None
@@ -49,18 +49,18 @@ def run_extract_message(col1, col2, dct):
         message = dct.decode(dct.image)  # binary output
         end_time = time.time()
         state["message"] = helper.binary_to_bytes(message)
-        state["uncompressed"] = False
+        state["decompressed"] = False
         est_time = end_time - start_time
         col1.write("extract computation time: {:.2f}s".format(est_time))
-    if col2.button("Uncompress", disabled=state.get("message", None) is None and state.get("no_extract_process", True) and not state.get("stego_image", False)):
+    if col2.button("decompress", disabled=state.get("message", None) is None and state.get("no_extract_process", True) and not state.get("stego_image", False)):
         try:
             start_time = time.time()
             comp = zlib.decompress(state["message"])  # bytes output
             end_time = time.time()
             state["message"] = comp  # turn bytes to binary
-            state["uncompressed"] = True
+            state["decompressed"] = True
             est_time = end_time - start_time
-            col1.write("uncompress computation time: {:.2f}s".format(est_time))
+            col1.write("decompress computation time: {:.2f}s".format(est_time))
             state['error'] = False
         except Exception as err:
             state['error'] = True
