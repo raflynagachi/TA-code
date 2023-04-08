@@ -3,12 +3,10 @@ import math
 from app.algo.helper import *
 # from helper import *
 import zlib
-import struct
 import cv2
 from bitarray import bitarray
-from sys import getsizeof, byteorder
+from sys import getsizeof
 from difflib import SequenceMatcher
-import base64
 
 
 class DCT:
@@ -135,7 +133,6 @@ class DCT:
             message += encode_bit
 
             if i >= 31 and max_char == 0:
-                print("message length: ", message[:32])
                 max_char = binary_to_int(message[:32])
                 message = message[32:]
             i += 1
@@ -144,12 +141,10 @@ class DCT:
     def post_image(self, stego):
         # retrieve cropped pixel
         image = np.copy(self.ori_img)
-        print("Sebelum: ", np.min(image), np.max(image))
         image[:stego.shape[0], :stego.shape[1]] = stego
         image = cv2.cvtColor(np.float32(image), cv2.COLOR_YCR_CB2BGR)
         image = np.uint8(np.clip(image, 0, 255))
         cv2.imwrite("stego_image.png", image, [cv2.IMWRITE_PNG_COMPRESSION, 9])
-        print("Sesudah: ", np.min(image), np.max(image))
         return image
 
     def encode(self, message):
@@ -177,17 +172,10 @@ class DCT:
 
         for idx, block in enumerate(dct_blocks):
             if len(message) == 0:
-                print("last index: ", idx)
                 break
-
-            # sort dct coefficient by frequency
-            # sorted_coef = zg.zigzag(block)
 
             # embed message into DCT coefficient
             message = self.embed_message(block, message)
-
-            # unpack zigzag
-            # dct_blocks[idx] = zg.inverse_zigzag(sorted_coef, 8, 8)
 
         if len(message) != 0:
             raise Exception("not enough block\n")
@@ -232,9 +220,6 @@ class DCT:
             if max_char != 0 and len(message) == max_char:
                 break
 
-            # sort dct coefficient by frequency
-            # sorted_coef = zg.zigzag(block)
-
             # embed message into DCT coefficient
             message, max_char = self.extract_message(
                 block, message, max_char)
@@ -262,24 +247,24 @@ def prep_image(img, conv=True):
 if __name__ == "__main__":
     ########### TEXT#############
     # test compression using zlib
-    # with open('example/buggy.txt') as f:
-    #     lines = f.readlines()
-    # originalMessage = str.encode(''.join(lines))
-    # comp = zlib.compress(originalMessage)
-    # print("Ori: ", getsizeof(originalMessage))
-    # print("Comp: ", getsizeof(comp))
+    with open('example/bulphrek.txt') as f:
+        lines = f.readlines()
+    originalMessage = str.encode(''.join(lines))
+    comp = zlib.compress(originalMessage)
+    print("Ori: ", getsizeof(originalMessage))
+    print("Comp: ", getsizeof(comp))
 
     # penyisipan citra
-    with open('example/rafly.png', 'rb') as file_image:
-        f = file_image.read()
-    comp = zlib.compress(f)
-    print("Ori: ", getsizeof(f))
-    print("Comp: ", getsizeof(comp))
+    # with open('example/rafly.png', 'rb') as file_image:
+    #     f = file_image.read()
+    # comp = zlib.compress(f)
+    # print("Ori: ", getsizeof(f))
+    # print("Comp: ", getsizeof(comp))
     # print("Comp: ", bytes_to_binary(comp))
     ########### TEXT END#############
 
     ########### ENCODING#############
-    coverImage = cv2.imread("example/solar.png", flags=cv2.IMREAD_COLOR)
+    coverImage = cv2.imread("example/animal.jpg", flags=cv2.IMREAD_COLOR)
     dctObj = DCT(cover_image=coverImage)
     # matn = np.rint(cv2.dct(np.rint(cv2.idct(np.float32(dctObj.QUANTIZATION_TABLE2)
     # * dctObj.QUANTIZATION_TABLE)))/dctObj.QUANTIZATION_TABLE)

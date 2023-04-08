@@ -8,6 +8,7 @@ from PIL import Image
 from sys import getsizeof
 import time
 from io import StringIO
+import os
 
 state = {}
 
@@ -46,10 +47,14 @@ def upload_photo(col, dct):
     uploaded_file = col.file_uploader(
         "Choose an image", type=['png', 'jpeg', 'jpg'])
     if uploaded_file != None:
-        image = Image.open(uploaded_file)
+        filetype = uploaded_file.name.split(".")[-1]
+        state["filetype"] = filetype
         state["image"] = True
-        # showImage(col, image)
-        image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+        # image = Image.open(uploaded_file)
+        # image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+        with open("cover_image."+filetype, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        image = cv2.imread("cover_image."+filetype, flags=cv2.IMREAD_COLOR)
         dct.set_cover_image(image)
         state["cap"] = helper.max_bit_cap(
             dct.width, dct.height, 4)/8  # cap in byte
@@ -80,16 +85,19 @@ def run_stegano(col1, col2, dct):
             end_time = time.time()
             est_time = end_time - start_time
             col1.write("computation time: {:.2f}s".format(est_time))
+            state["message"] = b''
             state["processed"] = True
         except Exception as err:
             st.error('error: ' + str(err), icon="🚨")
     if state.get("processed", True) and stego_image is not None:
         image = cv2.imread("stego_image.png", flags=cv2.IMREAD_COLOR)
+        cover_image = cv2.imread(
+            "cover_image."+state["filetype"], flags=cv2.IMREAD_COLOR)
         _, image_cropped = dct_helper.prep_image(image)
 
         # image = cv2.cvtColor(np.float32(image), cv2.COLOR_BGR2YCR_CB)
-        col1.write("MSE: {:.3f}".format(helper.MSE(dct.ori_img, image)))
-        col1.write("PSNR: {:.3f}".format(helper.PSNR(dct.ori_img, image)))
+        col1.write("MSE: {:.3f}".format(helper.MSE(cover_image, image)))
+        col1.write("PSNR: {:.3f}".format(helper.PSNR(cover_image, image)))
         msg2 = helper.binary_to_bytes(dct.decode(image_cropped))
         similarity = helper.similar(msg, msg2)
         col1.write("recovery accuracy: {:.3f}%".format(similarity*100))
