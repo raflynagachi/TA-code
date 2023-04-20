@@ -80,8 +80,9 @@ def run_stegano(col1, col2, dct):
         try:
             msg = state["message"] if state.get(
                 "message", b'') != b'' else dct.message
+            bin_msg = helper.bytes_to_binary(msg)
             start_time = time.time()
-            stego_image = dct.encode(helper.bytes_to_binary(msg))
+            stego_image = dct.encode(bin_msg)
             end_time = time.time()
             est_time = end_time - start_time
             col1.write("computation time: {:.2f}s".format(est_time))
@@ -98,8 +99,9 @@ def run_stegano(col1, col2, dct):
         # image = cv2.cvtColor(np.float32(image), cv2.COLOR_BGR2YCR_CB)
         col1.write("MSE: {:.3f}".format(helper.MSE(cover_image, image)))
         col1.write("PSNR: {:.3f}".format(helper.PSNR(cover_image, image)))
-        msg2 = helper.binary_to_bytes(dct.decode(image_cropped))
-        similarity = helper.similar(msg, msg2)
+        msg2 = dct.decode(image_cropped)
+        similarity = helper.similarity_string(
+            helper.bytes_to_binary(msg), msg2)
         col1.write("recovery accuracy: {:.3f}%".format(similarity*100))
         if similarity == 1:
             with open("stego_image.png", "rb") as file:

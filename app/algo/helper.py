@@ -88,6 +88,15 @@ def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
 
+def similarity_string(x, y):
+    n = min(len(x), len(y))
+    common = 0
+    for i in range(n):
+        if (x[i] == y[i]):
+            common += 1
+    return common/math.sqrt(len(x)*len(y))
+
+
 def max_bit_cap(m, n, bit_embedded):
     # bit_embedded is embedded bit in block 8x8
     return (m*n/64) * bit_embedded
