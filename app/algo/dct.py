@@ -1,7 +1,7 @@
 import numpy as np
 import math
-from app.algo.helper import *
-# from helper import *
+# from app.algo.helper import *
+from helper import *
 import zlib
 import cv2
 from bitarray import bitarray
@@ -146,16 +146,16 @@ class DCT:
     def post_image(self, stego):
         # retrieve cropped pixel
         image = np.copy(self.ori_img)
+        stego = cv2.cvtColor(np.float32(stego), cv2.COLOR_YCR_CB2BGR)
         image[:stego.shape[0], :stego.shape[1]] = stego
-        image = cv2.cvtColor(np.float32(image), cv2.COLOR_YCR_CB2BGR)
         image = np.uint8(np.clip(image, 0, 255))
-        cv2.imwrite("stego_image.png", image,
-                    [cv2.IMWRITE_PNG_COMPRESSION, 9])
-        # for i in range(10):
-        #     if not os.path.exists("stego_image{}.png".format(i)):
-        #         cv2.imwrite("stego_image{}.png".format(i), image,
-        #                     [cv2.IMWRITE_PNG_COMPRESSION, 9])
-        #         break
+        # cv2.imwrite("stego_image.png", image,
+        #             [cv2.IMWRITE_PNG_COMPRESSION, 9])
+        for i in range(10):
+            if not os.path.exists("stego_image{}.png".format(i)):
+                cv2.imwrite("stego_image{}.png".format(i), image,
+                            [cv2.IMWRITE_PNG_COMPRESSION, 9])
+                break
         return image
 
     def encode(self, message):
@@ -256,9 +256,9 @@ def attack_check():
     names = [
         # "Lenna.png",
         # "worldwar.jpg",
-        # "flowers.jpg",
+        "flowers.jpg",
         # "solar.png",
-        "animal.jpg",
+        # "animal.jpg",
         # "arduino.jpg",
     ]
     for n in names:
@@ -289,10 +289,10 @@ def attack_check():
 def test_image():
     names = [
         # "Lenna.png",
-        # "worldwar.jpg",
-        # "flowers.jpg",
+        "worldwar.jpg",
+        "flowers.jpg",
         # "solar.png",
-        "animal.jpg",
+        # "animal.jpg",
         # "arduino.jpg",
     ]
     for n in names:
@@ -301,12 +301,12 @@ def test_image():
         #     lines = f.readlines()
         # originalMessage = str.encode(''.join(lines))
         # comp = zlib.compress(originalMessage)
-        # comp = originalMessage
+        # # comp = originalMessage
 
-        with open('example/rafly.png', 'rb') as file_image:
+        with open('example/peppers.jpg', 'rb') as file_image:
             f = file_image.read()
-        comp = zlib.compress(f)
-        # comp = f
+        # comp = zlib.compress(f)
+        comp = f
         coverImage = cv2.imread("example/{}".format(n), flags=cv2.IMREAD_COLOR)
         dctObj = DCT(cover_image=coverImage)
         try:
@@ -316,24 +316,60 @@ def test_image():
         except Exception as err:
             print("Unexpected error: ", err)
             stego = None
-        stego2 = cv2.imread("image.png", flags=cv2.IMREAD_COLOR)
-        _, stego2_cropped = prep_image(stego2)
-        dctObj = DCT(is_decode=True)
-        message2 = dctObj.decode(stego2_cropped)
-        print("time: {:.2f}".format(end_time - start_time))
-        print("MSE: ", MSE(coverImage, stego2))
-        print('PSNR: ', PSNR(coverImage, stego2))
-        print("similarity2: {:.10f}".format(similarity_string(
-            bytes_to_binary(comp), message2)))
+        # stego2 = cv2.imread("stego_image.png", flags=cv2.IMREAD_COLOR)
+        # _, stego2_cropped = prep_image(stego2)
+        # dctObj = DCT(is_decode=True)
+        # message2 = dctObj.decode(stego2_cropped)
+        # print("time: {:.2f}".format(end_time - start_time))
+        # print("MSE: ", MSE(coverImage, stego2))
+        # print('PSNR: ', PSNR(coverImage, stego2))
+        # print("similarity2: {:.10f}".format(similarity_string(
+        #     bytes_to_binary(comp), message2)))
 
-        msg = binary_to_bytes(message2)
-        print("similarity bytes: {:.5f}\n".format(
-            similar(comp, msg)))
+        # msg = binary_to_bytes(message2)
+        # print("similarity bytes: {:.5f}\n".format(
+        #     similar(comp, msg)))
 
         # bbb = bytes_to_binary(comp)
         # for i in range(len(message2)):
         #     if message2[i] != bbb[i]:
         #         print(i, message2[i], bbb[i])
+
+
+def merge_image_array(img1, img2):
+    vis = np.concatenate((img1, img2), axis=1)
+    return vis
+
+
+def merge_image():
+    image_map = {
+        "lenna": "example/Lenna.png",
+        "worldwar": "example/worldwar.jpg",
+        "flowers": "example/flowers.jpg",
+        "solar": "example/solar.png",
+        "animal": "example/animal.jpg",
+        "arduino": "example/arduino.jpg",
+    }
+    onlyfiles = [f for f in os.listdir(
+        "imperceptibility") if isfile(join("imperceptibility", f))]
+
+    for n in onlyfiles:
+        print(n)
+        props = n.split(" ")
+        image = cv2.imread("imperceptibility/{}".format(n),
+                           flags=cv2.IMREAD_COLOR)
+        image_real = cv2.imread(image_map[props[1]])
+        height, width = image_real.shape[:2]
+        padded_img = np.zeros((
+            height + 0,
+            width + 16, 3
+        ), dtype=np.uint8)
+
+        # Copy the original image into the padded image
+        padded_img[:height, :width] = image_real
+        new_image = merge_image_array(padded_img, image)
+        cv2.imwrite("imperceptibility/out/{}".format(n), new_image,
+                    [cv2.IMWRITE_PNG_COMPRESSION, 9])
 
 
 def increase_brightness(img, value=30):
@@ -448,10 +484,11 @@ def brightness_attack():
 
 
 if __name__ == "__main__":
-    # test_image()
+    # merge_image()
+    test_image()
     # attack_check()
     # brightness_attack()
-    noise_attack()
+    # noise_attack()
 
     ########### TEXT#############
     # test compression using zlib
