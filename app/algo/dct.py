@@ -1,7 +1,7 @@
 import numpy as np
 import math
-# from app.algo.helper import *
-from helper import *
+from app.algo.helper import *
+# from helper import *
 import zlib
 import cv2
 from bitarray import bitarray
@@ -27,7 +27,7 @@ class DCT:
                           [72,  92,  95,  98, 112, 100, 103,  99]]
 
     def __init__(self, is_decode=False, cover_image=None):
-        self.quant_table = np.float32(self.QUANTIZATION_TABLE)/4
+        self.quant_table = np.float32(self.QUANTIZATION_TABLE)*0.25
         self.ori_img, self.image = None, None
         self.height, self.width = 0, 0
         self.ori_width, self.ori_height = 0, 0
@@ -106,18 +106,24 @@ class DCT:
         return dctMat
 
     def embed_message(self, block, encoded_data):
-        # indexes = [((2, 2), (1, 4)), ((0, 4), (3, 2)),
-        #            ((5, 0), (3, 3)), ((5, 1), (1, 5))]
-        indexes = [((5, 0), (3, 3)), ((2, 2), (1, 4)),
-                   ((0, 4), (3, 2)), ((4, 1), (4, 2))]
+        indexes = [((2, 2), (1, 4)), ((0, 4), (3, 2)),
+                   ((4, 1), (4, 2)), ((5, 0), (3, 3))]  # 3
+        # indexes = [((2, 2), (1, 3)), ((0, 4), (0, 5)),
+        #            ((4, 1), (3, 2)), ((5, 0), (6, 0))]  # 0
+        # indexes = [((2, 2), (0, 4)), ((1, 4), (3, 2)),
+        #            ((4, 1), (6, 0)), ((5, 0), (5, 1))]  # 1
+        # indexes = [((2, 2), (0, 5)), ((0, 4), (4, 1)),
+        #            ((5, 0), (4, 2)), ((6, 0), (3, 3))]  # 2
+        # indexes = [((2, 2), (2, 3)), ((0, 4), (4, 1)),
+        #            ((3, 2), (4, 2)), ((5, 0), (2, 4))]  # 4
         for si, ei in indexes:
             if len(encoded_data) == 0:
                 break
 
             # Swapping DCT
             if block[si[0]][si[1]] == block[ei[0]][ei[1]] and encoded_data[0] == "1":
-                block[si[0]][si[1]] += 1.5
-            if (encoded_data[0] == "0" and block[si[0]][si[1]] < block[ei[0]][ei[1]]) or (encoded_data[0] == "1" and block[si[0]][si[1]] >= block[ei[0]][ei[1]]):
+                block[ei[0]][ei[1]] += 1.5
+            if (encoded_data[0] == "0" and block[si[0]][si[1]] < block[ei[0]][ei[1]]) or (encoded_data[0] == "1" and block[si[0]][si[1]] > block[ei[0]][ei[1]]):
                 block[si[0]][si[1]], block[ei[0]][ei[1]
                                                   ] = block[ei[0]][ei[1]], block[si[0]][si[1]]
             encoded_data = encoded_data[1:]
@@ -125,8 +131,8 @@ class DCT:
         return encoded_data
 
     def extract_message(self, block, message, max_char):
-        indexes = [((5, 0), (3, 3)), ((2, 2), (1, 4)),
-                   ((0, 4), (3, 2)), ((4, 1), (4, 2))]
+        indexes = [((2, 2), (1, 4)), ((0, 4), (3, 2)),
+                   ((4, 1), (4, 2)), ((5, 0), (3, 3))]  # 3
         i = 0 if message == "" else len(message)
         for si, ei in indexes:
             if max_char != 0 and max_char == len(message):
@@ -149,13 +155,13 @@ class DCT:
         stego = cv2.cvtColor(np.float32(stego), cv2.COLOR_YCR_CB2BGR)
         image[:stego.shape[0], :stego.shape[1]] = stego
         image = np.uint8(np.clip(image, 0, 255))
-        # cv2.imwrite("stego_image.png", image,
-        #             [cv2.IMWRITE_PNG_COMPRESSION, 9])
-        for i in range(10):
-            if not os.path.exists("stego_image{}.png".format(i)):
-                cv2.imwrite("stego_image{}.png".format(i), image,
-                            [cv2.IMWRITE_PNG_COMPRESSION, 9])
-                break
+        cv2.imwrite("stego_image.png", image,
+                    [cv2.IMWRITE_PNG_COMPRESSION, 9])
+        # for i in range(10):
+        #     if not os.path.exists("stego_image{}.png".format(i)):
+        #         cv2.imwrite("stego_image{}.png".format(i), image,
+        #                     [cv2.IMWRITE_PNG_COMPRESSION, 9])
+        #         break
         return image
 
     def encode(self, message):
@@ -289,24 +295,24 @@ def attack_check():
 def test_image():
     names = [
         # "Lenna.png",
-        "worldwar.jpg",
+        # "worldwar.jpg",
         "flowers.jpg",
         # "solar.png",
         # "animal.jpg",
         # "arduino.jpg",
     ]
     for n in names:
-        print(n)
-        # with open('example/text.txt') as f:
-        #     lines = f.readlines()
-        # originalMessage = str.encode(''.join(lines))
-        # comp = zlib.compress(originalMessage)
-        # # comp = originalMessage
+        print("\n", n)
+        with open('example/text.txt') as f:
+            lines = f.readlines()
+        originalMessage = str.encode(''.join(lines))
+        comp = zlib.compress(originalMessage)
+        # comp = originalMessage
 
-        with open('example/peppers.jpg', 'rb') as file_image:
-            f = file_image.read()
-        # comp = zlib.compress(f)
-        comp = f
+        # with open('example/peppers.jpg', 'rb') as file_image:
+        #     f = file_image.read()
+        # # comp = zlib.compress(f)
+        # comp = f
         coverImage = cv2.imread("example/{}".format(n), flags=cv2.IMREAD_COLOR)
         dctObj = DCT(cover_image=coverImage)
         try:
@@ -485,7 +491,7 @@ def brightness_attack():
 
 if __name__ == "__main__":
     # merge_image()
-    test_image()
+    # test_image()
     # attack_check()
     # brightness_attack()
     # noise_attack()
