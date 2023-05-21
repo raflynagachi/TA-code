@@ -490,6 +490,7 @@ def brightness_attack():
 
 
 if __name__ == "__main__":
+    pass
     # merge_image()
     # test_image()
     # attack_check()
@@ -563,4 +564,4 @@ if __name__ == "__main__":
     # jpg_as_np = np.frombuffer(msg, dtype=np.uint8)
     # img_np = cv2.imdecode(jpg_as_np, cv2.IMREAD_COLOR)
     # print("PSNR sisip: ", PSNR(coverImage2, img_np))
-    ########### DECODING END###########
+    # ########## DECODING END###########
