@@ -41,12 +41,10 @@ def run_extract_message(col1, col2, dct):
     else:
         col1.write("✘ no image")
 
-    filetype = col2.radio("embedded file type?", ("text", "image"))
-
     # BUTTON
     if col2.button("Extract", disabled=state.get("no_extract_process", True)) and dct.image is not None:
         start_time = time.time()
-        message = dct.decode(dct.image)  # binary output
+        message, state["is_text"] = dct.decode(dct.image)  # binary output
         end_time = time.time()
         state["message"] = helper.binary_to_bytes(message)
         state["decompressed"] = False
@@ -70,7 +68,7 @@ def run_extract_message(col1, col2, dct):
         # write string to file
         # print("MESSAGE HERE: \n", state["message"].decode("UTF-8"))
         try:
-            if filetype == "text":
+            if state["is_text"]:
                 # open text file
                 text_file = open("data.txt", "w")
                 extracted_msg = state["message"].decode("UTF-8")

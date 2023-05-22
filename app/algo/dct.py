@@ -130,7 +130,7 @@ class DCT:
 
         return encoded_data
 
-    def extract_message(self, block, message, max_char):
+    def extract_message(self, block, message, max_char, is_text):
         indexes = [((2, 2), (1, 4)), ((0, 4), (3, 2)),
                    ((4, 1), (4, 2)), ((5, 0), (3, 3))]  # 3
         i = 0 if message == "" else len(message)
@@ -143,11 +143,12 @@ class DCT:
                                              ] >= block[ei[0]][ei[1]] else "1"
             message += encode_bit
 
-            if i >= 31 and max_char == 0:
-                max_char = binary_to_int(message[:32])
-                message = message[32:]
-            i += 1
-        return message, max_char
+            if max_char == 0 and i >= 32:
+                is_text = True if message[0] == "1" else False
+                max_char = binary_to_int(message[1:33])
+                message = message[33:]
+                i += 1
+        return message, max_char, is_text
 
     def post_image(self, stego):
         # retrieve cropped pixel
@@ -164,12 +165,13 @@ class DCT:
         #         break
         return image
 
-    def encode(self, message):
+    def encode(self, message, is_text=True):
         if message == None:
             return
 
         # add length of message as binary
-        message = int_to_binary(len(message), True) + message
+        is_text = "1" if is_text else "0"
+        message = is_text + int_to_binary(len(message), True) + message
         if getsizeof(binary_to_bytes(message)) > max_bit_cap(self.width, self.height, 4)/8:
             raise Exception("not enough block\n")
 
@@ -216,6 +218,7 @@ class DCT:
     def decode(self, imageArr):
         message = ""
         max_char = 0
+        is_text = False
 
         # modify only for Cr layer
         idx_channel = 1
@@ -235,9 +238,9 @@ class DCT:
             block = np.round(block/self.quant_table)
 
             # embed message into DCT coefficient
-            message, max_char = self.extract_message(
-                block, message, max_char)
-        return message
+            message, max_char, is_text = self.extract_message(
+                block, message, max_char, is_text)
+        return message, is_text
 
 
 def prep_image(img, conv=True):
@@ -283,7 +286,7 @@ def attack_check():
         stego2 = cv2.imread("image.png", flags=cv2.IMREAD_COLOR)
         _, stego2_cropped = prep_image(stego2)
         dctObj = DCT(is_decode=True)
-        message2 = dctObj.decode(stego2_cropped)
+        message2, _ = dctObj.decode(stego2_cropped)
         print("similarity2: {:.10f}".format(similarity_string(
             bytes_to_binary(comp), message2)))
 
@@ -325,7 +328,7 @@ def test_image():
         # stego2 = cv2.imread("stego_image.png", flags=cv2.IMREAD_COLOR)
         # _, stego2_cropped = prep_image(stego2)
         # dctObj = DCT(is_decode=True)
-        # message2 = dctObj.decode(stego2_cropped)
+        # message2,_ = dctObj.decode(stego2_cropped)
         # print("time: {:.2f}".format(end_time - start_time))
         # print("MSE: ", MSE(coverImage, stego2))
         # print('PSNR: ', PSNR(coverImage, stego2))
@@ -435,7 +438,7 @@ def noise_attack():
             "stego_attack_processed/noise/{}".format(n), flags=cv2.IMREAD_COLOR)
         _, stego2_cropped = prep_image(stegoImage)
         dctObj = DCT(is_decode=True)
-        message2 = dctObj.decode(stego2_cropped)
+        message2, _ = dctObj.decode(stego2_cropped)
         print("similarity binary: {:.10f}".format(similarity_string(
             bytes_to_binary(comp), message2)))
 
@@ -480,7 +483,7 @@ def brightness_attack():
             "stego_attack_processed/brightness/{}".format(n), flags=cv2.IMREAD_COLOR)
         _, stego2_cropped = prep_image(stegoImage)
         dctObj = DCT(is_decode=True)
-        message2 = dctObj.decode(stego2_cropped)
+        message2, _ = dctObj.decode(stego2_cropped)
         print("similarity binary: {:.10f}".format(similarity_string(
             bytes_to_binary(comp), message2)))
 
@@ -542,8 +545,8 @@ if __name__ == "__main__":
     # stego2 = cv2.imread("stego_image.png", flags=cv2.IMREAD_COLOR)
     # _, stego2_cropped = prep_image(stego2)
     # dctObj = DCT(is_decode=True)
-    # message = dctObj.decode(prep_image(stego)[1])
-    # message2 = dctObj.decode(stego2_cropped)
+    # message,_ = dctObj.decode(prep_image(stego)[1])
+    # message2,_ = dctObj.decode(stego2_cropped)
     # # print("message final: ", message)
     # # stego2 = cv2.cvtColor(np.float32(stego2), cv2.COLOR_YCR_CB2BGR)
     # print('PSNR: ', PSNR(coverImage, stego2))

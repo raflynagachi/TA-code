@@ -19,12 +19,14 @@ def input_message(col, dct):
     if upload_file:
         filetype = upload_file.name.split(".")[-1]
         if filetype == "txt":
+            state["is_text"] = True
             # To convert to a string based IO:
             stringio = StringIO(upload_file.getvalue().decode("utf-8"))
             # To read file as string:
             message = stringio.read()
             dct.set_message(str.encode(message))
         else:
+            state["is_text"] = False
             message = upload_file.getvalue()  # image in bytes
             dct.set_message(message)
 
@@ -82,7 +84,7 @@ def run_stegano(col1, col2, dct):
                 "message", b'') != b'' else dct.message
             bin_msg = helper.bytes_to_binary(msg)
             start_time = time.time()
-            stego_image = dct.encode(bin_msg)
+            stego_image = dct.encode(bin_msg, state["is_text"])
             end_time = time.time()
             est_time = end_time - start_time
             col1.write("computation time: {:.2f}s".format(est_time))
@@ -99,7 +101,7 @@ def run_stegano(col1, col2, dct):
         # image = cv2.cvtColor(np.float32(image), cv2.COLOR_BGR2YCR_CB)
         col1.write("MSE: {:.3f}".format(helper.MSE(cover_image, image)))
         col1.write("PSNR: {:.3f}".format(helper.PSNR(cover_image, image)))
-        msg2 = dct.decode(image_cropped)
+        msg2, _ = dct.decode(image_cropped)
         similarity = helper.similarity_string(
             helper.bytes_to_binary(msg), msg2)
         col1.write("recovery accuracy: {:.3f}%".format(similarity*100))
